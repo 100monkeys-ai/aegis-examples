@@ -1,0 +1,30 @@
+version: "1.0"
+
+agent:
+  name: "code-reviewer"
+  runtime: "python:3.11"
+  memory: true
+
+permissions:
+  network:
+    allow:
+      - "api.openai.com"
+      - "api.github.com"
+  
+  fs:
+    read:
+      - "/data/inputs"
+    write:
+      - "/data/outputs"
+  
+  execution_time: 300s
+  memory: 1GB
+  cpu_quota: 1.0
+
+tools:
+  - "mcp:github"
+  - "mcp:filesystem"
+
+env:
+  OPENAI_API_KEY: "secret:openai-key"
+  GITHUB_TOKEN: "secret:github-token"

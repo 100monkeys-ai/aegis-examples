@@ -1,0 +1,113 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "AEGIS Agent Manifest",
+  "description": "Schema for agent.yaml configuration files",
+  "type": "object",
+  "required": ["version", "agent", "permissions"],
+  "properties": {
+    "version": {
+      "type": "string",
+      "description": "Manifest schema version",
+      "enum": ["1.0"]
+    },
+    "agent": {
+      "type": "object",
+      "required": ["name", "runtime"],
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Unique agent name",
+          "pattern": "^[a-z0-9-]+$"
+        },
+        "runtime": {
+          "type": "string",
+          "description": "Container runtime image",
+          "examples": ["python:3.11", "node:20", "rust:1.75"]
+        },
+        "memory": {
+          "type": "boolean",
+          "description": "Enable persistent memory (Cortex)",
+          "default": false
+        }
+      }
+    },
+    "permissions": {
+      "type": "object",
+      "required": ["network", "fs"],
+      "properties": {
+        "network": {
+          "type": "object",
+          "required": ["allow"],
+          "properties": {
+            "allow": {
+              "type": "array",
+              "description": "Allowed network destinations (DNS names or IPs)",
+              "items": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        "fs": {
+          "type": "object",
+          "properties": {
+            "read": {
+              "type": "array",
+              "description": "Paths allowed for reading",
+              "items": {
+                "type": "string"
+              },
+              "default": []
+            },
+            "write": {
+              "type": "array",
+              "description": "Paths allowed for writing",
+              "items": {
+                "type": "string"
+              },
+              "default": []
+            }
+          }
+        },
+        "execution_time": {
+          "type": "string",
+          "description": "Maximum execution time (e.g., 300s, 5m)",
+          "pattern": "^\\d+(s|m|h)$",
+          "default": "300s"
+        },
+        "memory": {
+          "type": "string",
+          "description": "Maximum memory allocation (e.g., 512MB, 1GB)",
+          "pattern": "^\\d+(MB|GB)$",
+          "default": "512MB"
+        },
+        "cpu_quota": {
+          "type": "number",
+          "description": "CPU quota (fraction of one core, e.g., 0.5 = 50%)",
+          "minimum": 0.1,
+          "maximum": 4.0,
+          "default": 0.5
+        }
+      }
+    },
+    "tools": {
+      "type": "array",
+      "description": "MCP tools/servers the agent can use",
+      "items": {
+        "type": "string",
+        "pattern": "^mcp:[a-z0-9-]+$"
+      },
+      "default": []
+    },
+    "env": {
+      "type": "object",
+      "description": "Environment variables (use secret: prefix for secrets)",
+      "patternProperties": {
+        "^[A-Z_]+$": {
+          "type": "string"
+        }
+      },
+      "default": {}
+    }
+  }
+}

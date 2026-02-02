@@ -1,0 +1,36 @@
+version: "1.0"
+
+agent:
+  name: "email-summarizer"
+  runtime: "python:3.11"
+  memory: true  # Enable persistent memory (Cortex)
+
+permissions:
+  # Network access: Only allow connections to these domains
+  network:
+    allow:
+      - "api.openai.com"
+      - "imap.gmail.com"
+      - "smtp.gmail.com"
+  
+  # Filesystem access: Restricted paths
+  fs:
+    read:
+      - "/data/inputs"
+    write:
+      - "/data/outputs"
+  
+  # Resource limits
+  execution_time: 300s  # 5 minutes max
+  memory: 512MB
+  cpu_quota: 0.5  # 50% of one CPU core
+
+# Tools: MCP servers the agent can connect to
+tools:
+  - "mcp:gmail"
+  - "mcp:filesystem"
+
+# Environment variables (secrets injected at runtime)
+env:
+  OPENAI_API_KEY: "secret:openai-key"
+  GMAIL_CREDENTIALS: "secret:gmail-oauth"

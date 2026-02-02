@@ -1,0 +1,31 @@
+version: "1.0"
+
+agent:
+  name: "web-researcher"
+  runtime: "python:3.11"
+  memory: true
+
+permissions:
+  network:
+    allow:
+      - "api.openai.com"
+      - "*.google.com"
+      - "*.wikipedia.org"
+      - "arxiv.org"
+  
+  fs:
+    read:
+      - "/data/inputs"
+    write:
+      - "/data/outputs"
+  
+  execution_time: 600s  # 10 minutes for research
+  memory: 1GB
+  cpu_quota: 1.0
+
+tools:
+  - "mcp:browser"
+  - "mcp:search"
+
+env:
+  OPENAI_API_KEY: "secret:openai-key"
