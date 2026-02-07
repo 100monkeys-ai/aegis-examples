@@ -73,7 +73,7 @@ aegis run code-reviewer/agent.yaml
 
 ### Prerequisites
 
-- AEGIS CLI installed (`cargo install --git https://github.com/aent-ai/aegis-orchestrator`)
+- AEGIS CLI installed (`cargo install --git https://github.com/100monkeys-ai/aegis-orchestrator`)
 - Python 3.11+ (for Python-based agents)
 - API keys for services (OpenAI, GitHub, etc.)
 
@@ -82,7 +82,7 @@ aegis run code-reviewer/agent.yaml
 1. **Clone this repository**:
 
    ```bash
-   git clone https://github.com/aent-ai/aegis-examples
+   git clone https://github.com/100monkeys-ai/aegis-examples
    cd aegis-examples
    ```
 
@@ -231,10 +231,10 @@ Business Source License 1.1. See [LICENSE](LICENSE) for details.
 
 ## Related Repositories
 
-- [aegis-orchestrator](https://github.com/aent-ai/aegis-orchestrator) - Core runtime
-- [aegis-sdk-python](https://github.com/aent-ai/aegis-sdk-python) - Python SDK
-- [aegis-sdk-typescript](https://github.com/aent-ai/aegis-sdk-typescript) - TypeScript SDK
-- [aegis-control-plane](https://github.com/aent-ai/aegis-control-plane) - Web dashboard
+- [aegis-orchestrator](https://github.com/100monkeys-ai/aegis-orchestrator) - Core runtime
+- [aegis-sdk-python](https://github.com/100monkeys-ai/aegis-sdk-python) - Python SDK
+- [aegis-sdk-typescript](https://github.com/100monkeys-ai/aegis-sdk-typescript) - TypeScript SDK
+- [aegis-control-plane](https://github.com/100monkeys-ai/aegis-control-plane) - Web dashboard
 
 ---
 
