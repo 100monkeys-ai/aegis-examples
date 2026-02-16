@@ -16,8 +16,34 @@ spec:
     entrypoint: "main.py"
     isolation: "inherit"
   
+  task:
+    instruction: |
+      Summarize emails from the user's inbox according to specified criteria.
+      The summary must:
+      - Be concise (3-5 sentences per email)
+      - Capture key action items or important dates
+      - Maintain professional tone
+      - Highlight urgent or time-sensitive content
+      - Organize summaries by priority (urgent, normal, low)
+  
   execution:
+    mode: "iterative"  # Enable refinement loop
+    max_iterations: 3
     memory: true  # Enable persistent memory (Cortex)
+    
+    validation:
+      semantic:
+        enabled: true
+        threshold: 0.85  # High confidence for email summaries
+        prompt: |
+          Verify the email summaries meet quality standards:
+          {criteria}
+          
+          Check that:
+          - All emails are summarized (none skipped)
+          - Action items are clearly identified
+          - Urgency levels are appropriate
+          - Summary length is concise
   
   security:
     # Network access: Only allow connections to these domains

@@ -213,6 +213,108 @@
               "type": "boolean",
               "description": "Enable Cortex memory system",
               "default": false
+            },
+            "validation": {
+              "type": "object",
+              "description": "Multi-layer validation strategy",
+              "properties": {
+                "system": {
+                  "type": "object",
+                  "description": "System-level checks (exit codes, stderr tolerance)",
+                  "properties": {
+                    "must_succeed": {
+                      "type": "boolean",
+                      "description": "Require exit code 0",
+                      "default": true
+                    },
+                    "allow_stderr": {
+                      "type": "boolean",
+                      "description": "Allow stderr output",
+                      "default": false
+                    },
+                    "timeout_seconds": {
+                      "type": "integer",
+                      "description": "Per-iteration timeout",
+                      "minimum": 1,
+                      "default": 300
+                    }
+                  }
+                },
+                "output": {
+                  "type": "object",
+                  "description": "Output format validation (JSON Schema)",
+                  "properties": {
+                    "format": {
+                      "type": "string",
+                      "description": "Expected output format",
+                      "enum": ["json", "yaml", "text"]
+                    },
+                    "schema": {
+                      "type": "object",
+                      "description": "JSON Schema for output validation"
+                    }
+                  }
+                },
+                "script": {
+                  "type": "object",
+                  "description": "Custom validation script",
+                  "properties": {
+                    "path": {
+                      "type": "string",
+                      "description": "Path to validation script"
+                    },
+                    "description": {
+                      "type": "string",
+                      "description": "What the script validates"
+                    },
+                    "timeout_seconds": {
+                      "type": "integer",
+                      "description": "Script execution timeout",
+                      "minimum": 1,
+                      "default": 30
+                    }
+                  }
+                },
+                "semantic": {
+                  "type": "object",
+                  "description": "LLM-based semantic validation (Agent-as-Judge)",
+                  "properties": {
+                    "enabled": {
+                      "type": "boolean",
+                      "description": "Enable semantic validation",
+                      "default": false
+                    },
+                    "model": {
+                      "type": "string",
+                      "description": "Model alias for judge agent",
+                      "default": "default"
+                    },
+                    "prompt": {
+                      "type": "string",
+                      "description": "Judge prompt template (use {criteria}, {output}, {exit_code}, {stderr})"
+                    },
+                    "threshold": {
+                      "type": "number",
+                      "description": "Minimum confidence required (0.0-1.0)",
+                      "minimum": 0.0,
+                      "maximum": 1.0,
+                      "default": 0.8
+                    },
+                    "timeout_seconds": {
+                      "type": "integer",
+                      "description": "LLM call timeout",
+                      "minimum": 1,
+                      "default": 30
+                    },
+                    "fallback_on_unavailable": {
+                      "type": "string",
+                      "description": "Behavior when LLM unavailable",
+                      "enum": ["skip", "fail"],
+                      "default": "skip"
+                    }
+                  }
+                }
+              }
             }
           }
         },

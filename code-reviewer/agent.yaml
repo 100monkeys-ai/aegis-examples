@@ -16,8 +16,35 @@ spec:
     entrypoint: "main.py"
     isolation: "inherit"
   
+  task:
+    instruction: |
+      Review code changes in the pull request and provide actionable feedback.
+      Your review must include:
+      - Security vulnerabilities or concerns
+      - Performance issues or optimizations
+      - Code quality and maintainability suggestions
+      - Best practices and idiomatic code recommendations
+      - Positive highlights of good patterns used
+      Provide specific line references and concrete improvement suggestions.
+  
   execution:
+    mode: "iterative"  # Enable refinement loop
+    max_iterations: 3
     memory: true  # Enable Cortex memory
+    
+    validation:
+      semantic:
+        enabled: true
+        threshold: 0.80
+        prompt: |
+          Assess if the code review meets professional standards:
+          {criteria}
+          
+          The review should:
+          - Address all critical aspects (security, performance, quality)
+          - Provide specific, actionable feedback
+          - Include both concerns and positive observations
+          - Reference specific code sections
   
   security:
     network:

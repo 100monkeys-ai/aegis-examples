@@ -16,8 +16,34 @@ spec:
     entrypoint: "main.py"
     isolation: "inherit"
   
+  task:
+    instruction: |
+      Research the given topic comprehensively using web search and browser automation.
+      Produce a well-structured report with:
+      - Executive summary (2-3 paragraphs)
+      - Key findings with citations
+      - Relevant statistics and data points
+      - Credible sources from academic papers, official documentation, or reputable news outlets
+      Ensure all claims are backed by verifiable sources.
+  
   execution:
+    mode: "iterative"  # Enable refinement loop
+    max_iterations: 5
     memory: true  # Enable Cortex memory
+    
+    validation:
+      semantic:
+        enabled: true
+        threshold: 0.80  # 80% confidence required
+        prompt: |
+          Evaluate if the research report meets these criteria:
+          {criteria}
+          
+          The output should:
+          - Be well-structured and readable
+          - Include verifiable citations
+          - Cover the topic comprehensively
+          - Use credible sources
   
   security:
     network:
