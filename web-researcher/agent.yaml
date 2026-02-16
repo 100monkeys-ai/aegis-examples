@@ -1,31 +1,48 @@
-version: "1.0"
+apiVersion: 100monkeys.ai/v1
+kind: AgentManifest
 
-agent:
+metadata:
   name: "web-researcher"
-  runtime: "python:3.11"
-  memory: true
+  version: "1.0.0"
+  description: "Web research agent with browser automation and search capabilities"
+  labels:
+    role: "worker"
+    category: "research"
 
-permissions:
-  network:
-    allow:
-      - "api.openai.com"
-      - "*.google.com"
-      - "*.wikipedia.org"
-      - "arxiv.org"
+spec:
+  runtime:
+    language: "python"
+    version: "3.11"
+    entrypoint: "main.py"
+    isolation: "inherit"
   
-  fs:
-    read:
-      - "/data/inputs"
-    write:
-      - "/data/outputs"
+  execution:
+    memory: true  # Enable Cortex memory
   
-  execution_time: 600s  # 10 minutes for research
-  memory: 1GB
-  cpu_quota: 1.0
-
-tools:
-  - "mcp:browser"
-  - "mcp:search"
-
-env:
-  OPENAI_API_KEY: "secret:openai-key"
+  security:
+    network:
+      mode: "allow"
+      allowlist:
+        - "api.openai.com"
+        - "*.google.com"
+        - "*.wikipedia.org"
+        - "arxiv.org"
+    
+    filesystem:
+      read:
+        - "/data/inputs"
+      write:
+        - "/data/outputs"
+    
+    resources:
+      cpu: 1000       # 1000 millicores = 1.0 CPU core
+      memory: "1Gi"
+      disk: "2Gi"
+      timeout: "600s" # 10 minutes for research
+  
+  tools:
+    - "mcp:browser"
+    - "mcp:search"
+  
+  env:
+    OPENAI_API_KEY: "secret:openai-key"

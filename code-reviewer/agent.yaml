@@ -1,30 +1,47 @@
-version: "1.0"
+apiVersion: 100monkeys.ai/v1
+kind: AgentManifest
 
-agent:
+metadata:
   name: "code-reviewer"
-  runtime: "python:3.11"
-  memory: true
+  version: "1.0.0"
+  description: "AI-powered code review agent with GitHub integration"
+  labels:
+    role: "worker"
+    category: "development"
 
-permissions:
-  network:
-    allow:
-      - "api.openai.com"
-      - "api.github.com"
+spec:
+  runtime:
+    language: "python"
+    version: "3.11"
+    entrypoint: "main.py"
+    isolation: "inherit"
   
-  fs:
-    read:
-      - "/data/inputs"
-    write:
-      - "/data/outputs"
+  execution:
+    memory: true  # Enable Cortex memory
   
-  execution_time: 300s
-  memory: 1GB
-  cpu_quota: 1.0
-
-tools:
-  - "mcp:github"
-  - "mcp:filesystem"
-
-env:
-  OPENAI_API_KEY: "secret:openai-key"
-  GITHUB_TOKEN: "secret:github-token"
+  security:
+    network:
+      mode: "allow"
+      allowlist:
+        - "api.openai.com"
+        - "api.github.com"
+    
+    filesystem:
+      read:
+        - "/data/inputs"
+      write:
+        - "/data/outputs"
+    
+    resources:
+      cpu: 1000       # 1000 millicores = 1.0 CPU core
+      memory: "1Gi"
+      disk: "2Gi"
+      timeout: "300s"
+  
+  tools:
+    - "mcp:github"
+    - "mcp:filesystem"
+  
+  env:
+    OPENAI_API_KEY: "secret:openai-key"
+    GITHUB_TOKEN: "secret:github-token"

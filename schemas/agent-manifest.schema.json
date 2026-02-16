@@ -1,113 +1,286 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "AEGIS Agent Manifest",
-  "description": "Schema for agent.yaml configuration files",
+  "description": "Schema for agent.yaml configuration files (K8s-style format)",
   "type": "object",
-  "required": ["version", "agent", "permissions"],
+  "required": ["apiVersion", "kind", "metadata", "spec"],
   "properties": {
-    "version": {
+    "apiVersion": {
       "type": "string",
-      "description": "Manifest schema version",
-      "enum": ["1.0"]
+      "description": "API version following Kubernetes convention",
+      "enum": ["100monkeys.ai/v1"]
     },
-    "agent": {
+    "kind": {
+      "type": "string",
+      "description": "Resource kind",
+      "enum": ["AgentManifest"]
+    },
+    "metadata": {
       "type": "object",
-      "required": ["name", "runtime"],
+      "required": ["name", "version"],
       "properties": {
         "name": {
           "type": "string",
-          "description": "Unique agent name",
-          "pattern": "^[a-z0-9-]+$"
+          "description": "Unique agent name (DNS label format)",
+          "pattern": "^[a-z0-9][a-z0-9-]{0,62}$"
         },
-        "runtime": {
+        "version": {
           "type": "string",
-          "description": "Container runtime image",
-          "examples": ["python:3.11", "node:20", "rust:1.75"]
+          "description": "Manifest schema version (semantic versioning)",
+          "pattern": "^\\d+\\.\\d+\\.\\d+$"
         },
-        "memory": {
-          "type": "boolean",
-          "description": "Enable persistent memory (Cortex)",
-          "default": false
+        "description": {
+          "type": "string",
+          "description": "Human-readable description"
+        },
+        "labels": {
+          "type": "object",
+          "description": "Key-value labels for categorization",
+          "patternProperties": {
+            "^[a-z0-9-]+$": {
+              "type": "string"
+            }
+          }
+        },
+        "annotations": {
+          "type": "object",
+          "description": "Arbitrary annotations (non-identifying metadata)",
+          "patternProperties": {
+            "^[a-z0-9-./]+$": {
+              "type": "string"
+            }
+          }
         }
       }
     },
-    "permissions": {
+    "spec": {
       "type": "object",
-      "required": ["network", "fs"],
+      "required": ["runtime"],
       "properties": {
-        "network": {
+        "runtime": {
           "type": "object",
-          "required": ["allow"],
+          "required": ["language", "version"],
           "properties": {
-            "allow": {
+            "language": {
+              "type": "string",
+              "description": "Programming language",
+              "enum": ["python", "javascript", "typescript", "rust", "go"]
+            },
+            "version": {
+              "type": "string",
+              "description": "Language version",
+              "examples": ["3.11", "20", "1.75"]
+            },
+            "entrypoint": {
+              "type": "string",
+              "description": "Entry point file",
+              "examples": ["main.py", "index.js", "main.rs"]
+            },
+            "isolation": {
+              "type": "string",
+              "description": "Isolation mode",
+              "enum": ["inherit", "firecracker", "docker", "process"],
+              "default": "inherit"
+            }
+          }
+        },
+        "task": {
+          "type": "object",
+          "properties": {
+            "agentskills": {
               "type": "array",
-              "description": "Allowed network destinations (DNS names or IPs)",
+              "description": "Pre-built instruction packages",
               "items": {
-                "type": "string"
+                "type": "string",
+                "pattern": "^[a-z0-9-]+:[a-z0-9-]+$"
+              }
+            },
+            "instruction": {
+              "type": "string",
+              "description": "High-level task guidance"
+            },
+            "prompt_template": {
+              "type": "string",
+              "description": "Custom prompt template"
+            },
+            "input_data": {
+              "type": "object",
+              "description": "Structured input parameters"
+            }
+          }
+        },
+        "security": {
+          "type": "object",
+          "properties": {
+            "network": {
+              "type": "object",
+              "required": ["mode"],
+              "properties": {
+                "mode": {
+                  "type": "string",
+                  "description": "Network access policy mode",
+                  "enum": ["allow", "deny", "none"]
+                },
+                "allowlist": {
+                  "type": "array",
+                  "description": "Allowed network destinations",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "denylist": {
+                  "type": "array",
+                  "description": "Denied network destinations",
+                  "items": {
+                    "type": "string"
+                  }
+                }
+              }
+            },
+            "filesystem": {
+              "type": "object",
+              "properties": {
+                "read": {
+                  "type": "array",
+                  "description": "Paths allowed for reading",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "write": {
+                  "type": "array",
+                  "description": "Paths allowed for writing",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "read_only": {
+                  "type": "boolean",
+                  "description": "Read-only mode",
+                  "default": false
+                }
+              }
+            },
+            "resources": {
+              "type": "object",
+              "properties": {
+                "cpu": {
+                  "type": "integer",
+                  "description": "CPU limit in millicores (1000 = 1 core)",
+                  "minimum": 100,
+                  "maximum": 4000,
+                  "default": 1000
+                },
+                "memory": {
+                  "type": "string",
+                  "description": "Memory limit (e.g., 512Mi, 1Gi)",
+                  "pattern": "^\\d+(Mi|Gi|M|G)$",
+                  "default": "512Mi"
+                },
+                "disk": {
+                  "type": "string",
+                  "description": "Disk space limit (e.g., 1Gi, 10G)",
+                  "pattern": "^\\d+(Mi|Gi|M|G)$",
+                  "default": "1Gi"
+                },
+                "timeout": {
+                  "type": "string",
+                  "description": "Execution timeout (e.g., 300s, 5m)",
+                  "pattern": "^\\d+(s|m|h)$",
+                  "default": "300s"
+                }
               }
             }
           }
         },
-        "fs": {
+        "execution": {
           "type": "object",
           "properties": {
-            "read": {
-              "type": "array",
-              "description": "Paths allowed for reading",
-              "items": {
-                "type": "string"
-              },
-              "default": []
+            "mode": {
+              "type": "string",
+              "description": "Execution mode",
+              "enum": ["one-shot", "iterative"],
+              "default": "one-shot"
             },
-            "write": {
-              "type": "array",
-              "description": "Paths allowed for writing",
-              "items": {
-                "type": "string"
-              },
-              "default": []
+            "max_iterations": {
+              "type": "integer",
+              "description": "Maximum refinement loops",
+              "minimum": 1,
+              "maximum": 20,
+              "default": 10
+            },
+            "memory": {
+              "type": "boolean",
+              "description": "Enable Cortex memory system",
+              "default": false
             }
           }
         },
-        "execution_time": {
-          "type": "string",
-          "description": "Maximum execution time (e.g., 300s, 5m)",
-          "pattern": "^\\d+(s|m|h)$",
-          "default": "300s"
+        "tools": {
+          "type": "array",
+          "description": "MCP tools the agent can use",
+          "items": {
+            "type": "string",
+            "pattern": "^(mcp|custom):[a-z0-9-]+$"
+          }
         },
-        "memory": {
-          "type": "string",
-          "description": "Maximum memory allocation (e.g., 512MB, 1GB)",
-          "pattern": "^\\d+(MB|GB)$",
-          "default": "512MB"
+        "env": {
+          "type": "object",
+          "description": "Environment variables (use secret: prefix for secrets)",
+          "patternProperties": {
+            "^[A-Z_]+$": {
+              "type": "string"
+            }
+          }
         },
-        "cpu_quota": {
-          "type": "number",
-          "description": "CPU quota (fraction of one core, e.g., 0.5 = 50%)",
-          "minimum": 0.1,
-          "maximum": 4.0,
-          "default": 0.5
+        "schedule": {
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
+              "enum": ["cron", "interval", "manual"]
+            },
+            "cron": {
+              "type": "string",
+              "description": "Cron expression"
+            },
+            "timezone": {
+              "type": "string",
+              "description": "Timezone for schedule"
+            },
+            "enabled": {
+              "type": "boolean",
+              "default": true
+            }
+          }
+        },
+        "context": {
+          "type": "array",
+          "description": "Additional resources attached to agent",
+          "items": {
+            "type": "object",
+            "required": ["type"],
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": ["text", "file", "directory", "url"]
+              },
+              "content": {
+                "type": "string"
+              },
+              "path": {
+                "type": "string"
+              },
+              "url": {
+                "type": "string"
+              },
+              "description": {
+                "type": "string"
+              }
+            }
+          }
         }
       }
-    },
-    "tools": {
-      "type": "array",
-      "description": "MCP tools/servers the agent can use",
-      "items": {
-        "type": "string",
-        "pattern": "^mcp:[a-z0-9-]+$"
-      },
-      "default": []
-    },
-    "env": {
-      "type": "object",
-      "description": "Environment variables (use secret: prefix for secrets)",
-      "patternProperties": {
-        "^[A-Z_]+$": {
-          "type": "string"
-        }
-      },
-      "default": {}
     }
   }
 }

@@ -1,36 +1,53 @@
-version: "1.0"
+apiVersion: 100monkeys.ai/v1
+kind: AgentManifest
 
-agent:
+metadata:
   name: "email-summarizer"
-  runtime: "python:3.11"
-  memory: true  # Enable persistent memory (Cortex)
+  version: "1.0.0"
+  description: "Email summarization agent with Cortex memory"
+  labels:
+    role: "worker"
+    category: "productivity"
 
-permissions:
-  # Network access: Only allow connections to these domains
-  network:
-    allow:
-      - "api.openai.com"
-      - "imap.gmail.com"
-      - "smtp.gmail.com"
+spec:
+  runtime:
+    language: "python"
+    version: "3.11"
+    entrypoint: "main.py"
+    isolation: "inherit"
   
-  # Filesystem access: Restricted paths
-  fs:
-    read:
-      - "/data/inputs"
-    write:
-      - "/data/outputs"
+  execution:
+    memory: true  # Enable persistent memory (Cortex)
   
-  # Resource limits
-  execution_time: 300s  # 5 minutes max
-  memory: 512MB
-  cpu_quota: 0.5  # 50% of one CPU core
-
-# Tools: MCP servers the agent can connect to
-tools:
-  - "mcp:gmail"
-  - "mcp:filesystem"
-
-# Environment variables (secrets injected at runtime)
-env:
-  OPENAI_API_KEY: "secret:openai-key"
-  GMAIL_CREDENTIALS: "secret:gmail-oauth"
+  security:
+    # Network access: Only allow connections to these domains
+    network:
+      mode: "allow"
+      allowlist:
+        - "api.openai.com"
+        - "imap.gmail.com"
+        - "smtp.gmail.com"
+    
+    # Filesystem access: Restricted paths
+    filesystem:
+      read:
+        - "/data/inputs"
+      write:
+        - "/data/outputs"
+    
+    # Resource limits
+    resources:
+      cpu: 500        # 500 millicores = 0.5 CPU core
+      memory: "512Mi"
+      disk: "1Gi"
+      timeout: "300s" # 5 minutes max
+  
+  # Tools: MCP servers the agent can connect to
+  tools:
+    - "mcp:gmail"
+    - "mcp:filesystem"
+  
+  # Environment variables (secrets injected at runtime)
+  env:
+    OPENAI_API_KEY: "secret:openai-key"
+    GMAIL_CREDENTIALS: "secret:gmail-oauth"
