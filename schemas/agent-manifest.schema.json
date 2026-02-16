@@ -71,11 +71,6 @@
               "description": "Language version",
               "examples": ["3.11", "20", "1.75"]
             },
-            "entrypoint": {
-              "type": "string",
-              "description": "Entry point file",
-              "examples": ["main.py", "index.js", "main.rs"]
-            },
             "isolation": {
               "type": "string",
               "description": "Isolation mode",
