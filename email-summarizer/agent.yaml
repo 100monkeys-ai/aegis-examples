@@ -25,9 +25,9 @@ spec:
       - Highlight urgent or time-sensitive content
       - Organize summaries by priority (urgent, normal, low)
     prompt_template: |
-      {agent_instruction}
+      {{instruction}}
       
-      User: {user_input}
+      User: {{input}}
       Assistant:
   
   execution:

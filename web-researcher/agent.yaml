@@ -25,9 +25,9 @@ spec:
       - Credible sources from academic papers, official documentation, or reputable news outlets
       Ensure all claims are backed by verifiable sources.
     prompt_template: |
-      {agent_instruction}
+      {{instruction}}
       
-      User: {user_input}
+      User: {{input}}
       Researcher:
   
   execution:
