@@ -24,6 +24,11 @@ spec:
       - Maintain professional tone
       - Highlight urgent or time-sensitive content
       - Organize summaries by priority (urgent, normal, low)
+    prompt_template: |
+      {agent_instruction}
+      
+      User: {user_input}
+      Assistant:
   
   execution:
     mode: "iterative"  # Enable refinement loop

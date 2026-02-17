@@ -25,6 +25,11 @@ spec:
       - Best practices and idiomatic code recommendations
       - Positive highlights of good patterns used
       Provide specific line references and concrete improvement suggestions.
+    prompt_template: |
+      {agent_instruction}
+      
+      User: {user_input}
+      Reviewer:
   
   execution:
     mode: "iterative"  # Enable refinement loop

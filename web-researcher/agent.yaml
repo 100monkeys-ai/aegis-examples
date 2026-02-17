@@ -24,6 +24,11 @@ spec:
       - Relevant statistics and data points
       - Credible sources from academic papers, official documentation, or reputable news outlets
       Ensure all claims are backed by verifiable sources.
+    prompt_template: |
+      {agent_instruction}
+      
+      User: {user_input}
+      Researcher:
   
   execution:
     mode: "iterative"  # Enable refinement loop
