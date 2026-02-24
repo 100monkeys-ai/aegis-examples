@@ -82,30 +82,3 @@ spec:
   observability:
     logging:
       level: "info"
-
-  # ─── Keycloak IAM Configuration (ADR-041) ─────────────────────────────────
-  keycloak:
-    realms:
-      - slug: "aegis-system"
-        issuer_url: "https://auth.myzaru.com/realms/aegis-system"
-        jwks_uri: "https://auth.myzaru.com/realms/aegis-system/protocol/openid-connect/certs"
-        audience: "aegis-orchestrator"
-        kind: system
-
-      - slug: "zaru-consumer"
-        issuer_url: "https://auth.myzaru.com/realms/zaru-consumer"
-        jwks_uri: "https://auth.myzaru.com/realms/zaru-consumer/protocol/openid-connect/certs"
-        audience: "aegis-orchestrator"
-        kind: consumer
-
-    jwks_cache_ttl_seconds: 300
-
-    claims:
-      zaru_tier: "zaru_tier"
-      aegis_role: "aegis_role"
-
-  # ─── gRPC Authentication (ADR-041) ────────────────────────────────────────
-  grpc_auth:
-    enabled: true
-    exempt_methods:
-      - "/aegis.v1.InnerLoop/Generate"
