@@ -8,7 +8,7 @@ See the [Getting Started guide](https://docs.aegis.ai/docs/getting-started) for 
 
 | File | Purpose |
 | --- | --- |
-| `docker-compose.yml` | All backing services (Postgres, Temporal, SeaweedFS, Keycloak, Ollama, Cortex) |
+| `docker-compose.yml` | All backing services (Postgres, Temporal, SeaweedFS, Ollama) |
 | `aegis-config.yaml` | Reference AEGIS node configuration (mounted into the aegis-runtime container) |
 | `.env.example` | Environment variable template |
 | `init-multiple-dbs.sh` | PostgreSQL init script — creates all required databases on first start |
@@ -23,7 +23,7 @@ cd aegis-examples
 
 # 2. Configure environment
 cp deploy/.env.example deploy/.env
-# Edit deploy/.env if you need to change KEYCLOAK_ADMIN_PASSWORD or NFS host
+# Edit deploy/.env if you need to change AEGIS_NFS_HOST or other settings
 
 # 3. Start all services
 docker compose -f deploy/docker-compose.yml up -d
@@ -46,7 +46,6 @@ docker compose -f deploy/docker-compose.yml exec ollama ollama pull phi3:mini
 | SeaweedFS Master | <http://localhost:9333> | Storage cluster admin |
 | SeaweedFS Filer | <http://localhost:8888> | POSIX file API |
 | SeaweedFS WebDAV | <http://localhost:7333> | File browser |
-| Keycloak | <http://localhost:8090> | Identity provider admin |
 | Ollama | <http://localhost:11434> | Local LLM inference |
 | PostgreSQL | localhost:5432 | Primary data store |
 

@@ -10,12 +10,12 @@
 #   docker compose ps             # verify all services are healthy
 
 services:
-  # PostgreSQL database for Temporal, AEGIS, SeaweedFS, and Keycloak
+  # PostgreSQL database for Temporal, AEGIS, and SeaweedFS
   postgres:
     image: postgres:15-alpine
     container_name: aegis-postgres
     environment:
-      POSTGRES_MULTIPLE_DATABASES: "temporal,aegis,seaweedfs,keycloak"
+      POSTGRES_MULTIPLE_DATABASES: "temporal,aegis,seaweedfs"
       POSTGRES_USER: aegis
       POSTGRES_PASSWORD: aegis
       POSTGRES_DB: aegis
@@ -151,43 +151,6 @@ services:
     restart: unless-stopped
 
   # ============================================================================
-  # IAM Services (ADR-041: Keycloak Central IAM Integration)
-  # ============================================================================
-  #
-  # Admin UI:                       http://localhost:8090
-  # OIDC discovery (aegis-system):  http://localhost:8090/realms/aegis-system/.well-known/openid-configuration
-  # OIDC discovery (zaru-consumer): http://localhost:8090/realms/zaru-consumer/.well-known/openid-configuration
-
-  keycloak:
-    image: quay.io/keycloak/keycloak:26.0
-    container_name: aegis-keycloak
-    command: ["start-dev"]
-    depends_on:
-      postgres:
-        condition: service_healthy
-    environment:
-      KC_DB: postgres
-      KC_DB_URL: jdbc:postgresql://postgres:5432/keycloak
-      KC_DB_USERNAME: aegis
-      KC_DB_PASSWORD: aegis
-      KC_HOSTNAME_STRICT: "false"
-      KC_HTTP_ENABLED: "true"
-      # Bootstrap admin credentials — rotate immediately in any non-dev environment.
-      KEYCLOAK_ADMIN: admin
-      KEYCLOAK_ADMIN_PASSWORD: "${KEYCLOAK_ADMIN_PASSWORD:-admin}"
-    ports:
-      - "8090:8080"   # Admin UI + OIDC endpoints
-    networks:
-      - aegis-network
-    healthcheck:
-      test: ["CMD-SHELL", "curl -sf http://localhost:8080/health/ready || exit 1"]
-      interval: 15s
-      timeout: 5s
-      retries: 10
-      start_period: 30s
-    restart: unless-stopped
-
-  # ============================================================================
   # LLM Services
   # ============================================================================
 
@@ -218,7 +181,7 @@ services:
     restart: unless-stopped
 
   # ============================================================================
-  # Storage Services (Unified Volume Management - ADR-032)
+  # Storage Services (Unified Volume Management
   # ============================================================================
   #
   # Web UIs:
@@ -289,32 +252,6 @@ services:
       - "7333:7333"   # WebDAV + Web UI
     networks:
       - aegis-network
-    restart: unless-stopped
-
-  # ============================================================================
-  # Cortex Services (Learning & Memory)
-  # ============================================================================
-
-  # Embedding Service (Sentence Transformers)
-  embedding-service:
-    image: ghcr.io/100monkeys-ai/aegis-embedding-service:latest
-    container_name: aegis-embedding-service
-    ports:
-      - "50052:50052"
-    environment:
-      - MODEL_NAME=all-MiniLM-L6-v2
-    networks:
-      - aegis-network
-    healthcheck:
-      test: [
-        "CMD",
-        "python",
-        "-c",
-        "import grpc; import embedding_pb2; import embedding_pb2_grpc; channel = grpc.insecure_channel('localhost:50052'); stub = embedding_pb2_grpc.EmbeddingServiceStub(channel); stub.HealthCheck(embedding_pb2.HealthCheckRequest(), timeout=5); channel.close()"
-      ]
-      interval: 30s
-      timeout: 10s
-      retries: 3
     restart: unless-stopped
 
 networks:
