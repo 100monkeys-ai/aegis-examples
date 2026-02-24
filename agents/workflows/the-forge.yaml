@@ -100,7 +100,7 @@ kind: Workflow
 
 metadata:
   name: "the-forge"
-  version: "2.0.0"
+  version: "1.0.0"
   description: |-
     Full constitutional development lifecycle (ADR-020, Forge Blueprint).
     RequirementsAI → ArchitectAI → [human gate] → TesterAI → [human gate] →
@@ -132,7 +132,7 @@ spec:
     # ==========================================================================
     # Phase 1: ANALYZING
     # RequirementsAI decomposes the task into formal requirements and acceptance
-    # criteria, consulting the Knowledge Base (Cortex) for context.
+    # criteria.
     # ==========================================================================
     REQUIREMENTS:
       kind: Agent
