@@ -356,13 +356,6 @@ We welcome new examples! Please:
 
 GNU Affero General Public License v3.0 (AGPL-3.0). See [LICENSE](LICENSE) for details.
 
-## Related Repositories
-
-- [aegis-orchestrator](https://github.com/100monkeys-ai/aegis-orchestrator) - Core runtime
-- [aegis-sdk-python](https://github.com/100monkeys-ai/aegis-sdk-python) - Python SDK
-- [aegis-sdk-typescript](https://github.com/100monkeys-ai/aegis-sdk-typescript) - TypeScript SDK
-- [aegis-control-plane](https://github.com/100monkeys-ai/aegis-control-plane) - Web dashboard
-
 ---
 
 **Learn by example. Build with confidence.**
