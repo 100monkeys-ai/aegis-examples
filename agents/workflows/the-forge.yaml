@@ -374,10 +374,6 @@ spec:
       kind: System
       command: "{{workflow.test_command}}"
       workdir: /workspace
-      volumes:
-        - volume: "{{workflow.storage.workspace}}"
-          mount_point: "/workspace"
-          access_mode: "read-only"
       timeout: 10m
       transitions:
         - condition: exit_code_zero
@@ -498,13 +494,13 @@ spec:
             Audit panel rejected the implementation
             (consensus score: {{AUDIT.consensus.score}}, confidence: {{AUDIT.consensus.confidence}}).
 
-            Constitutional audit (score: {{AUDIT.agents.0.score}}):
+            Constitutional audit (score: {{AUDIT.individual_results.0.score}}):
             {{AUDIT.agents.0.output}}
 
-            Adversarial critique (score: {{AUDIT.agents.1.score}}):
+            Adversarial critique (score: {{AUDIT.individual_results.1.score}}):
             {{AUDIT.agents.1.output}}
 
-            Security audit (score: {{AUDIT.agents.2.score}}):
+            Security audit (score: {{AUDIT.individual_results.2.score}}):
             {{AUDIT.agents.2.output}}
 
             Fix all identified issues and ensure the test suite still passes.
@@ -533,13 +529,13 @@ spec:
 
         ## Audit Results
 
-        ### Constitutional Review (score: {{AUDIT.agents.0.score}})
+        ### Constitutional Review (score: {{AUDIT.individual_results.0.score}})
         {{AUDIT.agents.0.output}}
 
-        ### Adversarial Critique (score: {{AUDIT.agents.1.score}})
+        ### Adversarial Critique (score: {{AUDIT.individual_results.1.score}})
         {{AUDIT.agents.1.output}}
 
-        ### Security Audit (score: {{AUDIT.agents.2.score}})
+        ### Security Audit (score: {{AUDIT.individual_results.2.score}})
         {{AUDIT.agents.2.output}}
 
         ### Consensus Score: {{AUDIT.consensus.score}} / 1.0
@@ -602,9 +598,9 @@ spec:
         {{IMPLEMENTATION.output}}
 
         ## Audit scores
-        - Constitutional review: {{AUDIT.agents.0.score}}
-        - Adversarial critique:  {{AUDIT.agents.1.score}}
-        - Security audit:        {{AUDIT.agents.2.score}}
+        - Constitutional review: {{AUDIT.individual_results.0.score}}
+        - Adversarial critique:  {{AUDIT.individual_results.1.score}}
+        - Security audit:        {{AUDIT.individual_results.2.score}}
         - Weighted consensus:    {{AUDIT.consensus.score}}
 
         Analyse the approved implementation for patterns, conventions, or
@@ -615,9 +611,7 @@ spec:
 
         Write proposed constitution updates to /workspace/constitution-proposals.md.
       timeout: 5m
-      transitions:
-        - condition: always
-          target: ~  # Terminal — pipeline complete
+      transitions: []  # Terminal — pipeline complete
 
     # ==========================================================================
     # Terminal error states
