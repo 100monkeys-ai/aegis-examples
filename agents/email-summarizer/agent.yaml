@@ -1,5 +1,5 @@
 apiVersion: 100monkeys.ai/v1
-kind: AgentManifest
+kind: Agent
 
 metadata:
   name: "email-summarizer"
@@ -50,11 +50,13 @@ spec:
           - Summary length is concise
   
   security:
-    # Network access: Only allow connections to these domains
+    # Network access: Only allow connections to these domains.
+    # LLM routing is handled by the orchestrator — do not add api.openai.com here.
+    # The Gmail MCP tool server (running on the orchestrator host) makes IMAP/SMTP
+    # calls on behalf of the agent; its credentials are managed via OpenBao.
     network:
       mode: "allow"
       allowlist:
-        - "api.openai.com"
         - "imap.gmail.com"
         - "smtp.gmail.com"
     
@@ -77,7 +79,7 @@ spec:
     - "mcp:gmail"
     - "mcp:filesystem"
   
-  # Environment variables (secrets injected at runtime)
+  # Secrets referenced here are resolved by the orchestrator via OpenBao and
+  # injected into the associated MCP tool server process — NOT the agent container.
   env:
-    OPENAI_API_KEY: "secret:openai-key"
     GMAIL_CREDENTIALS: "secret:gmail-oauth"

@@ -1,5 +1,5 @@
 apiVersion: 100monkeys.ai/v1
-kind: AgentManifest
+kind: Agent
 
 metadata:
   name: "web-researcher"
@@ -50,10 +50,11 @@ spec:
           - Use credible sources
   
   security:
+    # LLM routing is handled by the orchestrator — do not add api.openai.com here.
+    # The browser/search MCP tool servers make outbound requests on behalf of the agent.
     network:
       mode: "allow"
       allowlist:
-        - "api.openai.com"
         - "*.google.com"
         - "*.wikipedia.org"
         - "arxiv.org"
@@ -73,6 +74,3 @@ spec:
   tools:
     - "mcp:browser"
     - "mcp:search"
-  
-  env:
-    OPENAI_API_KEY: "secret:openai-key"

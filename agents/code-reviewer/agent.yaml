@@ -1,5 +1,5 @@
 apiVersion: 100monkeys.ai/v1
-kind: AgentManifest
+kind: Agent
 
 metadata:
   name: "code-reviewer"
@@ -51,10 +51,11 @@ spec:
           - Reference specific code sections
   
   security:
+    # LLM routing is handled by the orchestrator — do not add api.openai.com here.
+    # The GitHub MCP tool server makes api.github.com calls on behalf of the agent.
     network:
       mode: "allow"
       allowlist:
-        - "api.openai.com"
         - "api.github.com"
     
     filesystem:
@@ -72,7 +73,8 @@ spec:
   tools:
     - "mcp:github"
     - "mcp:filesystem"
-  
+
+  # Secrets referenced here are resolved by the orchestrator via OpenBao and
+  # injected into the associated MCP tool server process — NOT the agent container.
   env:
-    OPENAI_API_KEY: "secret:openai-key"
     GITHUB_TOKEN: "secret:github-token"

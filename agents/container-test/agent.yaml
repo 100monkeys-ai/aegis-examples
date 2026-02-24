@@ -1,0 +1,59 @@
+apiVersion: 100monkeys.ai/v1
+kind: Agent
+
+metadata:
+  name: "container-test"
+  version: "1.0.0"
+  description: "An agent that spins up a container just for testing ephemeral filesystem capabilities."
+  labels:
+    role: "worker"
+    category: "demo"
+    specialty: "containerization"
+
+spec:
+  runtime:
+    language: "python"
+    version: "3.11"
+
+  volumes:
+    - name: workspace
+      storage_class: ephemeral
+      mount_point: "/workspace"
+      access_mode: "read-write"
+      size_limit_mb: 1024
+      ttl_hours: 1
+
+  task:
+    instruction: |
+      You are a filesystem test agent. Write the text "Hello from AEGIS!" to
+      /workspace/hello.txt, then read it back and print the contents to confirm
+      the ephemeral volume is mounted and working correctly.
+
+    prompt_template: |
+      {{instruction}}
+      
+      User Request: {{input}}
+  
+  execution:
+    mode: "iterative"
+    max_iterations: 3
+    memory: false
+
+  security:
+    network:
+      mode: "none"  # No network needed for filesystem test
+
+    filesystem:
+      read:
+        - "/workspace"
+      write:
+        - "/workspace"
+
+    resources:
+      cpu: 1000
+      memory: "1Gi"
+      timeout: "120s"
+
+  tools:
+    - "fs.write"
+    - "fs.read"

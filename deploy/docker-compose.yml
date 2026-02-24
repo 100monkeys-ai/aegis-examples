@@ -1,0 +1,368 @@
+# AEGIS Local Development Stack
+#
+# Starts all backing services and the AEGIS runtime using pre-built images.
+# The AEGIS binary itself runs outside Docker — see the Getting Started guide:
+# https://docs.aegis.ai/docs/getting-started
+#
+# Quick start:
+#   cp .env.example .env          # configure environment
+#   docker compose up -d          # start all services
+#   docker compose ps             # verify all services are healthy
+
+services:
+  # PostgreSQL database for Temporal, AEGIS, SeaweedFS, and Keycloak
+  postgres:
+    image: postgres:15-alpine
+    container_name: aegis-postgres
+    environment:
+      POSTGRES_MULTIPLE_DATABASES: "temporal,aegis,seaweedfs,keycloak"
+      POSTGRES_USER: aegis
+      POSTGRES_PASSWORD: aegis
+      POSTGRES_DB: aegis
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./init-multiple-dbs.sh:/docker-entrypoint-initdb.d/init-multiple-dbs.sh
+    networks:
+      - aegis-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U aegis"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Temporal Server (auto-setup version for easy deployment)
+  temporal:
+    image: temporalio/auto-setup:1.23.0
+    container_name: aegis-temporal
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      - DB=postgresql
+      - DB_PORT=5432
+      - POSTGRES_USER=aegis
+      - POSTGRES_PWD=aegis
+      - POSTGRES_SEEDS=postgres
+      - DYNAMIC_CONFIG_FILE_PATH=config/dynamicconfig/development-sql.yaml
+      - ENABLE_ES=false
+      - ES_SEEDS=
+      - ES_VERSION=v7
+    ports:
+      - "7233:7233"   # gRPC endpoint for clients and workers
+      - "6933:6933"   # gRPC endpoint for history service
+      - "6934:6934"   # gRPC endpoint for matching service
+      - "6935:6935"   # gRPC endpoint for worker service
+      - "6939:6939"   # gRPC endpoint for frontend service
+    networks:
+      - aegis-network
+    volumes:
+      - ./temporal:/etc/temporal/config/dynamicconfig
+    healthcheck:
+      test: ["CMD", "tctl", "--address", "temporal:7233", "cluster", "health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Temporal Web UI for workflow visualization and debugging
+  temporal-ui:
+    image: temporalio/ui:2.21.3
+    container_name: aegis-temporal-ui
+    depends_on:
+      - temporal
+    environment:
+      - TEMPORAL_ADDRESS=temporal:7233
+      - TEMPORAL_CORS_ORIGINS=http://localhost:3000
+    ports:
+      - "8233:8080"   # Access UI at http://localhost:8233
+    networks:
+      - aegis-network
+
+  # AEGIS Temporal Worker (TypeScript)
+  temporal-worker:
+    image: ghcr.io/100monkeys-ai/aegis-temporal-worker:latest
+    container_name: aegis-temporal-worker
+    depends_on:
+      temporal:
+        condition: service_healthy
+      postgres:
+        condition: service_healthy
+      aegis-runtime:
+        condition: service_healthy
+    environment:
+      - TEMPORAL_ADDRESS=temporal:7233
+      - TEMPORAL_NAMESPACE=default
+      - TEMPORAL_TASK_QUEUE=aegis-agents
+      - DATABASE_URL=postgresql://aegis:aegis@postgres:5432/aegis
+      - AEGIS_RUNTIME_GRPC_URL=aegis-runtime:50051
+      - AEGIS_ORCHESTRATOR_URL=http://aegis-runtime:8088
+      - NODE_ENV=development
+      - LOG_LEVEL=info
+    ports:
+      - "3000:3000"   # HTTP API for workflow registration
+    networks:
+      - aegis-network
+    volumes:
+      - temporal-worker-data:/app/data
+    restart: unless-stopped
+
+  # AEGIS Runtime Service (Rust gRPC Server)
+  aegis-runtime:
+    image: ghcr.io/100monkeys-ai/aegis-runtime:latest
+    container_name: aegis-runtime
+    depends_on:
+      postgres:
+        condition: service_healthy
+      temporal:
+        condition: service_healthy
+      ollama:
+        condition: service_healthy
+    environment:
+      - AEGIS_DATABASE_URL=postgresql://aegis:aegis@postgres:5432/aegis
+      - RUST_LOG=info,aegis_orchestrator=debug
+      - AEGIS_WORKER_HTTP_ENDPOINT=http://temporal-worker:3000
+      - TEMPORAL_ADDRESS=temporal:7233
+      - AEGIS_ENABLE_DISK_QUOTAS=false  # Disable disk quotas on WSL/macOS (no XFS+pquota)
+      # Docker network for agent containers
+      # Referenced in aegis-config.yaml via: runtime.docker_network_mode: "env:AEGIS_DOCKER_NETWORK"
+      - AEGIS_DOCKER_NETWORK=${AEGIS_DOCKER_NETWORK:-aegis-network}
+      # Agent bootstrap orchestrator callback URL (used by assets/bootstrap.py)
+      # Referenced in aegis-config.yaml via: runtime.orchestrator_url: "env:AEGIS_ORCHESTRATOR_URL"
+      - AEGIS_ORCHESTRATOR_URL=${AEGIS_ORCHESTRATOR_URL:-http://aegis-runtime:8088}
+      # NFS Server hostname for volume mounts (accessed by the Docker daemon on the host, not the container network).
+      # See .env.example for platform-specific values.
+      # - AEGIS_NFS_HOST=${AEGIS_NFS_HOST}
+    ports:
+      - "8088:8088"   # AEGIS HTTP API
+      - "50051:50051" # gRPC for worker activities
+      - "2049:2049"   # NFS Server Gateway (ADR-036)
+    networks:
+      - aegis-network
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock  # For Docker-based agent isolation
+      - ./aegis-config.yaml:/app/aegis-config.yaml
+      - aegis-runtime-data:/app/data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8088/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  # ============================================================================
+  # IAM Services (ADR-041: Keycloak Central IAM Integration)
+  # ============================================================================
+  #
+  # Admin UI:                       http://localhost:8090
+  # OIDC discovery (aegis-system):  http://localhost:8090/realms/aegis-system/.well-known/openid-configuration
+  # OIDC discovery (zaru-consumer): http://localhost:8090/realms/zaru-consumer/.well-known/openid-configuration
+
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.0
+    container_name: aegis-keycloak
+    command: ["start-dev"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      KC_DB: postgres
+      KC_DB_URL: jdbc:postgresql://postgres:5432/keycloak
+      KC_DB_USERNAME: aegis
+      KC_DB_PASSWORD: aegis
+      KC_HOSTNAME_STRICT: "false"
+      KC_HTTP_ENABLED: "true"
+      # Bootstrap admin credentials — rotate immediately in any non-dev environment.
+      KEYCLOAK_ADMIN: admin
+      KEYCLOAK_ADMIN_PASSWORD: "${KEYCLOAK_ADMIN_PASSWORD:-admin}"
+    ports:
+      - "8090:8080"   # Admin UI + OIDC endpoints
+    networks:
+      - aegis-network
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:8080/health/ready || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+    restart: unless-stopped
+
+  # ============================================================================
+  # LLM Services
+  # ============================================================================
+
+  # Ollama (Local LLM Runtime)
+  # The default aegis-config.yaml uses Ollama with phi3:mini.
+  # Pull a model after first start: docker compose exec ollama ollama pull phi3:mini
+  ollama:
+    image: ollama/ollama:latest
+    container_name: aegis-ollama
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama-models:/root/.ollama/models
+    networks:
+      - aegis-network
+    healthcheck:
+      test: ["CMD", "ollama", "list"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    restart: unless-stopped
+
+  # ============================================================================
+  # Storage Services (Unified Volume Management - ADR-032)
+  # ============================================================================
+  #
+  # Web UIs:
+  # - Master Admin UI: http://localhost:9333 (cluster topology, volume allocation)
+  # - WebDAV File Browser: http://localhost:7333 (browse and manage files)
+  # - Filer API: http://localhost:8888 (REST API for AEGIS)
+
+  # SeaweedFS Master (Metadata & Leader Election)
+  seaweedfs-master:
+    image: chrislusf/seaweedfs:latest
+    container_name: aegis-seaweedfs-master
+    command: 'master -ip=seaweedfs-master -ip.bind=0.0.0.0 -metricsPort=9324'
+    ports:
+      - "9333:9333"  # HTTP API + Admin Web UI
+      - "19333:19333" # gRPC
+      - "9324:9324"  # Metrics
+    volumes:
+      - seaweedfs-master-data:/data
+    networks:
+      - aegis-network
+    restart: unless-stopped
+
+  # SeaweedFS Volume Server (Data Storage)
+  seaweedfs-volume:
+    image: chrislusf/seaweedfs:latest
+    container_name: aegis-seaweedfs-volume
+    command: 'volume -ip=seaweedfs-volume -master="seaweedfs-master:9333" -ip.bind=0.0.0.0 -port=8080 -metricsPort=9325'
+    depends_on:
+      - seaweedfs-master
+    ports:
+      - "8080:8080"   # HTTP API
+      - "18080:18080" # gRPC
+      - "9325:9325"   # Metrics
+    volumes:
+      - seaweedfs-volume-data:/data
+    networks:
+      - aegis-network
+    restart: unless-stopped
+
+  # SeaweedFS Filer (Filesystem Metadata + POSIX API)
+  seaweedfs-filer:
+    image: chrislusf/seaweedfs:latest
+    container_name: aegis-seaweedfs-filer
+    command: 'filer -ip=seaweedfs-filer -master="seaweedfs-master:9333" -ip.bind=0.0.0.0 -metricsPort=9326'
+    tty: true
+    stdin_open: true
+    depends_on:
+      - seaweedfs-master
+      - seaweedfs-volume
+    ports:
+      - "8888:8888"   # HTTP API (main interface for AEGIS)
+      - "18888:18888" # gRPC
+      - "9326:9326"   # Metrics
+    volumes:
+      - seaweedfs-filer-data:/data
+    networks:
+      - aegis-network
+    restart: unless-stopped
+
+  # SeaweedFS WebDAV (File Browser UI)
+  seaweedfs-webdav:
+    image: chrislusf/seaweedfs:latest
+    container_name: aegis-seaweedfs-webdav
+    command: 'webdav -filer="seaweedfs-filer:8888" -ip.bind=0.0.0.0'
+    depends_on:
+      - seaweedfs-filer
+    ports:
+      - "7333:7333"   # WebDAV + Web UI
+    networks:
+      - aegis-network
+    restart: unless-stopped
+
+  # ============================================================================
+  # Cortex Services (Learning & Memory)
+  # ============================================================================
+
+  # Embedding Service (Sentence Transformers)
+  embedding-service:
+    image: ghcr.io/100monkeys-ai/aegis-embedding-service:latest
+    container_name: aegis-embedding-service
+    ports:
+      - "50052:50052"
+    environment:
+      - MODEL_NAME=all-MiniLM-L6-v2
+    networks:
+      - aegis-network
+    healthcheck:
+      test: [
+        "CMD",
+        "python",
+        "-c",
+        "import grpc; import embedding_pb2; import embedding_pb2_grpc; channel = grpc.insecure_channel('localhost:50052'); stub = embedding_pb2_grpc.EmbeddingServiceStub(channel); stub.HealthCheck(embedding_pb2.HealthCheckRequest(), timeout=5); channel.close()"
+      ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    restart: unless-stopped
+
+  # Neo4j (Knowledge Graph)
+  neo4j:
+    image: neo4j:5.15-community
+    container_name: aegis-neo4j
+    ports:
+      - "7474:7474"  # HTTP
+      - "7687:7687"  # Bolt
+    environment:
+      - NEO4J_AUTH=neo4j/aegis_dev_password
+      - NEO4J_PLUGINS=["apoc"]
+      - NEO4J_dbms_security_procedures_unrestricted=apoc.*
+      - NEO4J_dbms_memory_heap_initial__size=512m
+      - NEO4J_dbms_memory_heap_max__size=2G
+    volumes:
+      - neo4j-data:/data
+      - neo4j-logs:/logs
+    networks:
+      - aegis-network
+    healthcheck:
+      test: ["CMD", "cypher-shell", "-u", "neo4j", "-p", "aegis_dev_password", "RETURN 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+    restart: unless-stopped
+
+networks:
+  aegis-network:
+    name: aegis-network  # Use exact name without docker-compose prefix
+    driver: bridge
+
+volumes:
+  postgres-data:
+    driver: local
+  temporal-worker-data:
+    driver: local
+  aegis-runtime-data:
+    driver: local
+  ollama-models:
+    driver: local
+  neo4j-data:
+    driver: local
+  neo4j-logs:
+    driver: local
+  seaweedfs-master-data:
+    driver: local
+  seaweedfs-volume-data:
+    driver: local
+  seaweedfs-filer-data:
+    driver: local

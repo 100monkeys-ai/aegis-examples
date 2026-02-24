@@ -1,0 +1,63 @@
+apiVersion: 100monkeys.ai/v1
+kind: Agent
+
+metadata:
+  name: "hello-world"
+  version: "1.0.0"
+  description: "Introductory agent that writes, tests, and validates a Python function"
+  labels:
+    role: "worker"
+    category: "demo"
+
+spec:
+  runtime:
+    language: "python"
+    version: "3.11"
+    isolation: "inherit"
+
+  task:
+    instruction: |
+      You are a Python programming assistant. Given a task description, write a
+      correct Python function, save it to /workspace/solution.py, write a test
+      script to /workspace/test_solution.py that exercises the function, and
+      run the tests. Fix any errors until all tests pass.
+    prompt_template: |
+      {{instruction}}
+
+      Task: {{input}}
+
+  execution:
+    mode: "iterative"  # Enable the 100monkeys refinement loop
+    max_iterations: 5
+    memory: false       # No Cortex memory needed for a hello-world demo
+
+    validation:
+      semantic:
+        enabled: true
+        threshold: 0.85
+        prompt: |
+          Assess whether the agent successfully completed the task:
+          - A correct Python function was written to /workspace/solution.py
+          - Tests were written to /workspace/test_solution.py
+          - All tests passed without errors
+
+  security:
+    network:
+      mode: "allow"
+      allowlist: []  # LLM routing is handled by the orchestrator — agents do not call LLM APIs directly
+
+    filesystem:
+      read:
+        - "/workspace"
+      write:
+        - "/workspace"
+
+    resources:
+      cpu: 500          # 0.5 CPU core
+      memory: "512Mi"
+      timeout: "120s"
+
+  tools:
+    - "cmd.run"         # Execute Python scripts in the container
+    - "fs.write"        # Write solution and test files
+    - "fs.read"         # Read files for verification

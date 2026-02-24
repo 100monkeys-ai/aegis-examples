@@ -1,8 +1,37 @@
 # AEGIS Examples
 
-Example agents demonstrating the capabilities of the AEGIS runtime.
+Example agents and the local development stack for the AEGIS runtime.
 
-[![License](https://img.shields.io/badge/license-BSL%201.1-blue.svg)](LICENSE)
+[![License](https://img.shields.io/badge/license-AGPL--3.0-blue.svg)](LICENSE)
+
+## Deploy the local stack
+
+All Docker Compose files and configuration needed to run AEGIS locally are in [`deploy/`](deploy/).
+
+```bash
+git clone https://github.com/100monkeys-ai/aegis-examples.git
+cd aegis-examples
+
+# Configure environment (edit if needed)
+cp deploy/.env.example deploy/.env
+
+# Start all services (Postgres, SeaweedFS, Temporal, Keycloak, Ollama, Cortex)
+docker compose -f deploy/docker-compose.yml up -d
+
+# Install the AEGIS binary
+curl -fsSL https://github.com/100monkeys-ai/aegis-orchestrator/releases/latest/download/aegis-linux-x86_64.tar.gz \
+  | tar -xz -C /usr/local/bin
+
+# Deploy and run the hello-world example
+aegis agent deploy ./agents/hello-world/agent.yaml
+aegis execute --agent hello-world \
+  --input '{"task": "Write a Python function that returns the Fibonacci sequence up to n."}' \
+  --watch
+```
+
+See [deploy/README.md](deploy/README.md) for full details and the [Getting Started guide](https://docs.aegis.ai/docs/getting-started) for a step-by-step walkthrough.
+
+---
 
 ## Overview
 
@@ -12,12 +41,36 @@ This repository contains ready-to-run example agents that showcase:
 - Security policy configuration
 - Memory system (Cortex) usage
 - Best practices for agent development
+- The complete local deployment stack
 
 ## Examples
 
+### 0. Hello World
+
+**Location**: [`agents/hello-world/`](agents/hello-world/)
+
+The introductory agent. Writes a Python function, tests it, and iteratively refines it until all tests pass. Used in the [Getting Started guide](https://docs.aegis.ai/docs/getting-started).
+
+**Features**:
+
+- Iterative refinement loop (100monkeys algorithm)
+- `fs.write` and `cmd.run` tool usage
+- Gradient validation (0.0–1.0 quality score)
+
+**Run**:
+
+```bash
+aegis agent deploy ./agents/hello-world/agent.yaml
+aegis execute --agent hello-world \
+  --input '{"task": "Write a Python function that returns the Fibonacci sequence up to n."}' \
+  --watch
+```
+
+---
+
 ### 1. Email Summarizer
 
-**Location**: [`email-summarizer/`](email-summarizer/)
+**Location**: [`agents/email-summarizer/`](agents/email-summarizer/)
 
 Connects to Gmail and generates AI-powered email summaries.
 
@@ -30,12 +83,12 @@ Connects to Gmail and generates AI-powered email summaries.
 **Run**:
 
 ```bash
-aegis run email-summarizer/agent.yaml
+aegis run agents/email-summarizer/agent.yaml
 ```
 
 ### 2. Web Researcher
 
-**Location**: [`web-researcher/`](web-researcher/)
+**Location**: [`agents/web-researcher/`](agents/web-researcher/)
 
 Performs deep research on any topic by searching, reading, and synthesizing information.
 
@@ -48,12 +101,12 @@ Performs deep research on any topic by searching, reading, and synthesizing info
 **Run**:
 
 ```bash
-aegis run web-researcher/agent.yaml
+aegis run agents/web-researcher/agent.yaml
 ```
 
 ### 3. Code Reviewer
 
-**Location**: [`code-reviewer/`](code-reviewer/)
+**Location**: [`agents/code-reviewer/`](agents/code-reviewer/)
 
 Reviews pull requests for security issues, code quality, and best practices.
 
@@ -66,40 +119,49 @@ Reviews pull requests for security issues, code quality, and best practices.
 **Run**:
 
 ```bash
-aegis run code-reviewer/agent.yaml
+aegis run agents/code-reviewer/agent.yaml
 ```
 
 ## Getting Started
 
 ### Prerequisites
 
-- AEGIS CLI installed (`cargo install --git https://github.com/100monkeys-ai/aegis-orchestrator`)
-- Python 3.11+ (for Python-based agents)
-- API keys for services (OpenAI, GitHub, etc.)
+- **Docker** 24.0+ and **Docker Compose** v2.20+ — for the local backing-service stack
+- **AEGIS binary** — download from the [GitHub Releases page](https://github.com/100monkeys-ai/aegis-orchestrator/releases)
+- **Python 3.11+** — for Python-based agents
+- API keys for the services you want to use (OpenAI, GitHub, etc.)
 
 ### Running an Example
 
-1. **Clone this repository**:
+1. **Clone this repository and start the local stack**:
 
    ```bash
    git clone https://github.com/100monkeys-ai/aegis-examples
    cd aegis-examples
+   cp deploy/.env.example deploy/.env
+   docker compose -f deploy/docker-compose.yml up -d
    ```
 
-2. **Set up secrets**:
+2. **Install the AEGIS binary**:
 
    ```bash
-   # Add to your AEGIS dashboard or use environment variables
-   export OPENAI_API_KEY="sk-..."
+   curl -fsSL https://github.com/100monkeys-ai/aegis-orchestrator/releases/latest/download/aegis-linux-x86_64.tar.gz \
+     | tar -xz -C /usr/local/bin
    ```
 
-3. **Run an agent**:
+3. **Deploy and run an agent**:
 
    ```bash
-   aegis run email-summarizer/agent.yaml
+   # Start with the hello-world example — no API keys required with local Ollama
+   aegis agent deploy ./agents/hello-world/agent.yaml
+   aegis execute --agent hello-world \
+     --input '{"task": "Write a Python function that returns the Fibonacci sequence up to n."}' \
+     --watch
    ```
 
 ### Creating Your Own Agent
+
+AEGIS agents are **manifest-only** — there is no agent-side Python script. The orchestrator drives the LLM using the `task.instruction` you provide, and the LLM accomplishes the task through tool calls (`fs.write`, `cmd.run`, `mcp:*`, etc.). You declare *what* the agent can do; the runtime figures out *how*.
 
 1. **Create a directory**:
 
@@ -111,98 +173,163 @@ aegis run code-reviewer/agent.yaml
 2. **Create `agent.yaml`**:
 
    ```yaml
-   version: "1.0"
-   agent:
+   apiVersion: 100monkeys.ai/v1
+   kind: Agent
+
+   metadata:
      name: "my-agent"
-     runtime: "python:3.11"
-     memory: true
+     version: "1.0.0"
+     description: "Brief description of what this agent does"
 
-   permissions:
-     network:
-       allow:
-         - "api.openai.com"
-     fs:
-       read: ["/data/inputs"]
-       write: ["/data/outputs"]
+   spec:
+     runtime:
+       language: "python"
+       version: "3.11"
+       isolation: "inherit"
 
-   tools:
-     - "mcp:filesystem"
+     task:
+       instruction: |
+         Describe the agent\'s behaviour here as a clear, natural-language
+         instruction. The orchestrator uses this as the system prompt for the
+         iterative LLM loop. Be specific about inputs, outputs, and quality
+         criteria.
 
-   env:
-     OPENAI_API_KEY: "secret:openai-key"
+     execution:
+       mode: "iterative"
+       max_iterations: 5
+       memory: false
+
+       validation:
+         semantic:
+           enabled: true
+           threshold: 0.85
+           prompt: |
+             Assess whether the agent successfully completed the task.
+
+     security:
+       network:
+         mode: "allow"
+         allowlist: []  # Add external domains only if your tools need them
+       filesystem:
+         read: ["/workspace"]
+         write: ["/workspace"]
+       resources:
+         cpu: 500
+         memory: "512Mi"
+         timeout: "120s"
+
+     tools:
+       - "fs.write"
+       - "fs.read"
+       - "cmd.run"
    ```
 
-3. **Create `main.py`**:
-
-   ```python
-   import os
-   from openai import OpenAI
-
-   client = OpenAI(api_key=os.environ["OPENAI_API_KEY"])
-
-   def main():
-       response = client.chat.completions.create(
-           model="gpt-4",
-           messages=[{"role": "user", "content": "Hello!"}],
-       )
-       print(response.choices[0].message.content)
-
-   if __name__ == "__main__":
-       main()
-   ```
-
-4. **Run**:
+3. **Deploy and run**:
 
    ```bash
-   aegis run agent.yaml
+   aegis agent deploy ./my-agent/agent.yaml
+   aegis execute --agent my-agent --input '{"task": "Your task here"}' --watch
    ```
 
 ## Agent Manifest Reference
 
-### Required Fields
+AEGIS manifests follow a Kubernetes-style `apiVersion/kind/metadata/spec` schema. There is **no agent-side script** — the orchestrator drives the LLM using `spec.task.instruction`.
+
+### Metadata
 
 ```yaml
-version: "1.0"           # Manifest version
-agent:
-  name: "agent-name"     # Unique identifier
-  runtime: "python:3.11" # Container image
-  memory: true           # Enable persistent memory
+apiVersion: 100monkeys.ai/v1
+kind: Agent
+metadata:
+  name: "agent-name"     # Unique identifier, used as --agent value
+  version: "1.0.0"
+  description: "What this agent does"
+  labels:
+    role: "worker"       # worker | judge | critic | router
+    category: "demo"
 ```
 
-### Permissions
+### Runtime
 
 ```yaml
-permissions:
-  network:
-    allow:               # Allowed domains/IPs
-      - "api.openai.com"
-  fs:
-    read: ["/data"]      # Readable paths
-    write: ["/data/out"] # Writable paths
-  execution_time: 300s   # Max execution time
-  memory: 512MB          # Memory limit
-  cpu_quota: 0.5         # CPU quota (0.5 = 50%)
+spec:
+  runtime:
+    language: "python"   # Execution environment
+    version: "3.11"
+    isolation: "inherit" # inherit (Docker) | microvm (Firecracker)
+```
+
+### Task
+
+```yaml
+  task:
+    instruction: |
+      Natural-language description of the agent's goal.
+      The orchestrator uses this as the system prompt for the LLM.
+      Be specific: describe inputs, expected outputs, and quality bar.
+    prompt_template: |
+      {{instruction}}
+      User: {{input}}
+```
+
+### Execution
+
+```yaml
+  execution:
+    mode: "iterative"    # iterative = 100monkeys refinement loop
+    max_iterations: 5
+    memory: false        # true = enable Cortex persistent memory
+
+    validation:
+      semantic:
+        enabled: true
+        threshold: 0.85  # 0.0–1.0; score below this triggers refinement
+        prompt: |
+          Assess whether the agent successfully completed the task.
+```
+
+### Security
+
+```yaml
+  security:
+    network:
+      mode: "allow"
+      allowlist:
+        # List only domains your MCP tool servers need to reach.
+        # Do NOT add api.openai.com or any LLM endpoint here —
+        # the orchestrator handles all LLM routing.
+        - "api.github.com"
+    filesystem:
+      read: ["/workspace"]
+      write: ["/workspace"]
+    resources:
+      cpu: 500           # millicores (500 = 0.5 core)
+      memory: "512Mi"
+      timeout: "120s"
 ```
 
 ### Tools
 
-MCP tools available to the agent:
-
 ```yaml
-tools:
-  - "mcp:gmail"          # Gmail integration
-  - "mcp:github"         # GitHub API
-  - "mcp:browser"        # Web browsing
-  - "mcp:filesystem"     # File access
-  - "mcp:search"         # Web search
+  tools:
+    - "fs.write"         # Write files in the agent container
+    - "fs.read"          # Read files in the agent container
+    - "cmd.run"          # Execute shell commands in the container
+    - "mcp:gmail"        # Gmail integration (tool server on orchestrator host)
+    - "mcp:github"       # GitHub API
+    - "mcp:browser"      # Web browsing
+    - "mcp:search"       # Web search
 ```
 
-### Environment Variables
+### Secrets (for MCP tool servers)
 
 ```yaml
-env:
-  OPENAI_API_KEY: "secret:openai-key"  # Reference secret
-  DEBUG: "true"                         # Plain value
+  # Secrets listed here are resolved from OpenBao by the orchestrator and
+  # injected into MCP tool server processes on the orchestrator host.
+  # They are NOT exposed inside the agent container.
+  env:
+    GITHUB_TOKEN: "secret:github-token"
+    GMAIL_CREDENTIALS: "secret:gmail-oauth"
 ```
 
 ## Security Best Practices
@@ -227,7 +354,7 @@ We welcome new examples! Please:
 
 ## License
 
-Business Source License 1.1. See [LICENSE](LICENSE) for details.
+GNU Affero General Public License v3.0 (AGPL-3.0). See [LICENSE](LICENSE) for details.
 
 ## Related Repositories
 

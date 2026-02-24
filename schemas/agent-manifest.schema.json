@@ -13,7 +13,7 @@
     "kind": {
       "type": "string",
       "description": "Resource kind",
-      "enum": ["AgentManifest"]
+      "enum": ["Agent"]
     },
     "metadata": {
       "type": "object",

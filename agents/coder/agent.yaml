@@ -1,0 +1,38 @@
+apiVersion: 100monkeys.ai/v1
+kind: Agent
+
+metadata:
+  name: "coder"
+  version: "1.0.0"
+  description: "A technical agent that provides code snippets."
+  labels:
+    role: "worker"
+    category: "demo"
+
+spec:
+  runtime:
+    language: "python"
+    version: "3.10"
+
+  
+  task:
+    instruction: "You are an expert Rust programmer. When asked a question, provide a concise code example in Rust using modern idioms. Explain briefly after the code."
+    prompt_template: |
+      {{instruction}}
+      
+      User: {{input}}
+      Agent:
+  
+  execution:
+    mode: "iterative"  # Enable refinement for code quality
+    max_iterations: 3
+    memory: true  # Learn common coding patterns
+  
+  security:
+    network:
+      mode: "none"  # No network needed — LLM routing is handled by the orchestrator
+
+    resources:
+      cpu: 500        # 0.5 CPU core
+      memory: "512Mi"
+      timeout: "60s"
