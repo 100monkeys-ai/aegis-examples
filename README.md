@@ -122,6 +122,40 @@ Reviews pull requests for security issues, code quality, and best practices.
 aegis run agents/code-reviewer/agent.yaml
 ```
 
+## Workflow Examples
+
+Multi-agent pipelines are defined in [`agents/workflows/`](agents/workflows/). Each file is a complete, deployable Workflow Manifest.
+
+| File | Pattern | Description |
+| --- | --- | --- |
+| [`100monkeys-classic.yaml`](agents/workflows/100monkeys-classic.yaml) | Iterative refinement | Generate → execute → judge-validate → refine loop using the Blackboard for iteration state. |
+| [`the-forge.yaml`](agents/workflows/the-forge.yaml) | Constitutional pipeline | Full RequirementsAI → ArchitectAI → TesterAI → CoderAI → parallel audit → human gate → deploy lifecycle. |
+| [`stateful-pipeline.yaml`](agents/workflows/stateful-pipeline.yaml) | Blackboard accumulation | Three-state example showing all three Blackboard population methods: `spec.context` seeding, automatic state-output writes, and explicit `update_blackboard` System states. **Start here if you're learning the Blackboard.** |
+| [`echo-workflow.yaml`](agents/workflows/echo-workflow.yaml) | Minimal | Two-state echo workflow demonstrating `{{workflow.context.KEY}}` access. |
+| [`agent-workflow.yaml`](agents/workflows/agent-workflow.yaml) | Minimal | Two-state workflow with a System state reading an Agent output. |
+| [`human-approval.yaml`](agents/workflows/human-approval.yaml) | Human-in-the-loop | Three-state workflow with a Human gate and `signal` resumption. |
+| [`multi-judge.yaml`](agents/workflows/multi-judge.yaml) | Parallel validation | `ParallelAgents` state with weighted-average consensus. |
+| [`multi-judge-majority.yaml`](agents/workflows/multi-judge-majority.yaml) | Parallel validation | `ParallelAgents` with majority-vote consensus strategy. |
+| [`multi-judge-unanimous.yaml`](agents/workflows/multi-judge-unanimous.yaml) | Parallel validation | `ParallelAgents` with unanimous-approval gate. |
+| [`multi-judge-best-of-n.yaml`](agents/workflows/multi-judge-best-of-n.yaml) | Parallel validation | `ParallelAgents` with best-of-N consensus — for grading and ranking tasks. |
+
+Deploy and run a workflow:
+
+```bash
+# Deploy
+aegis workflow deploy ./agents/workflows/stateful-pipeline.yaml
+
+# Start with input
+aegis workflow start stateful-pipeline --input '{"task": "quantum entanglement", "max_words": 150}'
+
+# Monitor
+aegis workflow status <execution-id> --watch
+```
+
+See the [Workflow Manifest Reference](https://docs.aegis.ai/docs/reference/workflow-manifest) and the [Building Workflows guide](https://docs.aegis.ai/docs/guides/building-workflows) for full documentation.
+
+---
+
 ## Getting Started
 
 ### Prerequisites

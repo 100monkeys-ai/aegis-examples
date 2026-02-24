@@ -114,7 +114,6 @@ metadata:
 
 spec:
   context:
-    project_name: "{{workflow.project_name}}"
     review_threshold: 0.8
 
   # Shared ephemeral workspace — all agent and system states mount /workspace.
@@ -384,11 +383,11 @@ spec:
             The automated test suite failed. Fix the implementation to make all
             tests pass. Do NOT modify test files.
 
-            Test output:
-            {{TEST.stderr}}
+            Test output (stderr):
+            {{TEST.output.stderr}}
 
             stdout:
-            {{TEST.stdout}}
+            {{TEST.output.stdout}}
 
     # ==========================================================================
     # Phase 5: AUDITING
@@ -447,7 +446,7 @@ spec:
             {{IMPLEMENTATION.output}}
 
             Test results (all passing):
-            {{TEST.stdout}}
+            {{TEST.output.stdout}}
 
             Respond with JSON: { "score": 0.0–1.0, "confidence": 0.0–1.0,
             "reasoning": "...", "suggestions": [...] }
@@ -494,13 +493,13 @@ spec:
             Audit panel rejected the implementation
             (consensus score: {{AUDIT.consensus.score}}, confidence: {{AUDIT.consensus.confidence}}).
 
-            Constitutional audit (score: {{AUDIT.individual_results.0.score}}):
+            Constitutional audit (score: {{AUDIT.agents.0.output.score}}):
             {{AUDIT.agents.0.output}}
 
-            Adversarial critique (score: {{AUDIT.individual_results.1.score}}):
+            Adversarial critique (score: {{AUDIT.agents.1.output.score}}):
             {{AUDIT.agents.1.output}}
 
-            Security audit (score: {{AUDIT.individual_results.2.score}}):
+            Security audit (score: {{AUDIT.agents.2.output.score}}):
             {{AUDIT.agents.2.output}}
 
             Fix all identified issues and ensure the test suite still passes.
@@ -525,17 +524,17 @@ spec:
         {{ARCHITECTURE.output}}
 
         ## Test Results (all passing)
-        {{TEST.stdout}}
+        {{TEST.output.stdout}}
 
         ## Audit Results
 
-        ### Constitutional Review (score: {{AUDIT.individual_results.0.score}})
+        ### Constitutional Review (score: {{AUDIT.agents.0.output.score}})
         {{AUDIT.agents.0.output}}
 
-        ### Adversarial Critique (score: {{AUDIT.individual_results.1.score}})
+        ### Adversarial Critique (score: {{AUDIT.agents.1.output.score}})
         {{AUDIT.agents.1.output}}
 
-        ### Security Audit (score: {{AUDIT.individual_results.2.score}})
+        ### Security Audit (score: {{AUDIT.agents.2.output.score}})
         {{AUDIT.agents.2.output}}
 
         ### Consensus Score: {{AUDIT.consensus.score}} / 1.0
@@ -569,7 +568,7 @@ spec:
       command: "echo"
       env:
         MESSAGE: "The Forge pipeline complete — deployment approved"
-        PROJECT: "{{workflow.context.project_name}}"
+        PROJECT: "{{default input.project_name 'the-forge'}}"
         CONSENSUS_SCORE: "{{AUDIT.consensus.score}}"
       transitions:
         - condition: always
@@ -598,9 +597,9 @@ spec:
         {{IMPLEMENTATION.output}}
 
         ## Audit scores
-        - Constitutional review: {{AUDIT.individual_results.0.score}}
-        - Adversarial critique:  {{AUDIT.individual_results.1.score}}
-        - Security audit:        {{AUDIT.individual_results.2.score}}
+        - Constitutional review: {{AUDIT.agents.0.output.score}}
+        - Adversarial critique:  {{AUDIT.agents.1.output.score}}
+        - Security audit:        {{AUDIT.agents.2.output.score}}
         - Weighted consensus:    {{AUDIT.consensus.score}}
 
         Analyse the approved implementation for patterns, conventions, or

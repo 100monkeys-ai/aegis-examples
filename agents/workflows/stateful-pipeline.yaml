@@ -1,0 +1,151 @@
+# stateful-pipeline.yaml — Blackboard Accumulation Example
+#
+# This example demonstrates all three ways the Blackboard is populated:
+#
+#   1. SEEDING    — spec.context keys are available from the first state as
+#                   {{workflow.context.KEY}} or {{blackboard.KEY}}.
+#
+#   2. STATE OUTPUT — after each state completes, its result is written to the
+#                     Blackboard under the state name. Access via
+#                     {{STATE.output}}, {{STATE.status}}, {{STATE.score}}, etc.
+#
+#   3. EXPLICIT UPDATE — a System state with `command: update_blackboard` and
+#                        env vars lets you write named keys into the Blackboard
+#                        that subsequent states can read via {{blackboard.KEY}}.
+#
+# FSM:
+#   RESEARCH (Agent)
+#     └──on_success──► STORE (System/update_blackboard)
+#                         └──always──► SUMMARISE (Agent)
+#                                         └──score_above 0.8──► DONE
+#                                         └──score_below 0.8──► FAILED
+#
+# Required workflow inputs:
+#   topic    — Subject to research and summarise.
+#
+# Optional inputs:
+#   max_words  — Target word count for the summary (default 200).
+#   language   — Output language (default "english").
+#
+# Usage:
+#   aegis workflow deploy ./agents/workflows/stateful-pipeline.yaml
+#   aegis workflow start stateful-pipeline --input '{
+#     "topic": "quantum entanglement",
+#     "max_words": 150,
+#     "language": "english"
+#   }'
+
+apiVersion: 100monkeys.ai/v1
+kind: Workflow
+
+metadata:
+  name: "stateful-pipeline"
+  version: "1.0.0"
+  description: |-
+    Three-state pipeline demonstrating Blackboard seeding, state-output
+    access, and explicit update_blackboard writes.
+  labels:
+    category: "example"
+    pattern: "blackboard-accumulation"
+
+spec:
+  # ── 1. SEEDING ──────────────────────────────────────────────────────────────
+  # These keys are written into the Blackboard before any state executes.
+  # Access them as {{workflow.context.KEY}} or {{blackboard.KEY}}.
+  context:
+    max_words: 200       # override with --input max_words
+    language: "english"  # override with --input language
+
+  initial_state: RESEARCH
+
+  states:
+
+    # ── State 1: RESEARCH ────────────────────────────────────────────────────
+    # Agent state — the result is automatically written to the Blackboard:
+    #   {{RESEARCH.output}}   → the agent's final response text
+    #   {{RESEARCH.status}}   → "success" or "failed"
+    #   {{RESEARCH.score}}    → validation score (0.0–1.0)
+    RESEARCH:
+      kind: Agent
+      agent: "web-researcher"
+      input: |-
+        Research the following topic thoroughly. Gather key facts, context,
+        and supporting evidence. Output in {{workflow.context.language}}.
+
+        Topic: {{workflow.task}}
+      timeout: 5m
+      transitions:
+        - condition: on_success
+          target: STORE
+        - condition: on_failure
+          target: FAILED
+
+    # ── State 2: STORE ───────────────────────────────────────────────────────
+    # System state using `update_blackboard` to write named keys.
+    # Each env var becomes a Blackboard key accessible as {{blackboard.KEY}}
+    # in all subsequent states.
+    #
+    # This is useful when you want to give a value a stable, semantic name
+    # rather than referring to it by state name + field path.
+    STORE:
+      kind: System
+      command: update_blackboard
+      env:
+        # Write the research output under a meaningful key name.
+        research_summary: "{{RESEARCH.output}}"
+        # Capture the validated topic (from the start input).
+        topic: "{{workflow.task}}"
+        # Record the word limit in effect (could differ from context default
+        # if the user supplied --input max_words).
+        word_limit: "{{default input.max_words workflow.context.max_words}}"
+        # Record output language.
+        output_language: "{{default input.language workflow.context.language}}"
+      transitions:
+        - condition: always
+          target: SUMMARISE
+
+    # ── State 3: SUMMARISE ───────────────────────────────────────────────────
+    # Reads the explicitly named Blackboard keys written by STORE above,
+    # demonstrating {{blackboard.KEY}} access in an agent input.
+    SUMMARISE:
+      kind: Agent
+      agent: "summariser-agent"
+      input: |-
+        You are writing a concise summary for a general audience.
+
+        Topic: {{blackboard.topic}}
+        Target language: {{blackboard.output_language}}
+        Target length: no more than {{blackboard.word_limit}} words
+
+        Source material:
+        ---
+        {{blackboard.research_summary}}
+        ---
+
+        Write a clear, accurate summary. Do not exceed the word limit.
+      timeout: 3m
+      transitions:
+        - condition: score_above
+          threshold: 0.8
+          target: DONE
+        - condition: score_below
+          threshold: 0.8
+          target: FAILED
+          feedback: "Summary quality too low (score: {{SUMMARISE.score}}): {{SUMMARISE.output.reasoning}}"
+
+    # ── Terminal states ───────────────────────────────────────────────────────
+    DONE:
+      kind: System
+      command: "echo"
+      env:
+        MESSAGE: "Pipeline complete"
+        TOPIC: "{{blackboard.topic}}"
+        SUMMARY_SCORE: "{{SUMMARISE.score}}"
+      transitions: []
+
+    FAILED:
+      kind: System
+      command: "echo"
+      env:
+        MESSAGE: "Pipeline failed"
+      transitions: []
