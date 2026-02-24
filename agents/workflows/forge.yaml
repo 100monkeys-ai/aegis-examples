@@ -1,337 +1,639 @@
-# The Forge Workflow
+# the-forge.yaml — Constitutional Development Lifecycle (ADR-020)
 #
-# Constitutional Development Lifecycle implementing ADR-020
-# Requirements → Architecture → Testing → Implementation → Review → Human Approval → Deploy
+# Merged from aegis-examples and aegis-orchestrator reference implementations.
+#
+# Full FSM — all blueprint phases:
+#
+#   REQUIREMENTS ──always──► ARCHITECTURE ──always──► ARCH_APPROVAL
+#                                ▲                          │
+#                                │ input_equals: revise ◄───┤
+#                                                           │ input_equals: approve
+#                                                           ▼
+#                                                     TEST_DESIGN ──always──► TEST_APPROVAL
+#                                ▲                                                  │
+#                                │ input_equals: revise ◄────────────────────────── ┤
+#                                                                                   │ input_equals: approve
+#                                                                                   ▼
+#                    ◄── on_failure ─── IMPLEMENTATION ◄──────── score_below 0.8 ──┐
+#                                              │                                    │
+#                                              │ on_success                         │
+#                                              ▼                                    │
+#                    ◄── exit_code_non_zero ── TEST ── exit_code_zero ──► AUDIT ────┘
+#                                                                          │ consensus >= 0.8
+#                                                                          ▼
+#                                                               FINAL_APPROVAL (Human)
+#                    ◄── input_equals: revise ─────────────────────────── │
+#                         DEPLOYMENT_REJECTED ◄─ input_equals: reject ─── │
+#                                                                          │ input_equals: approve
+#                                                                          ▼
+#                                                                    DEPLOY ──► LEARN ──► (complete)
+#
+# Blueprint phases (ai-forge-blueprint.md §4):
+#   ANALYZING             → REQUIREMENTS
+#   AWAITING_ARCH_APPROVAL→ ARCHITECTURE + ARCH_APPROVAL
+#   AWAITING_TEST_APPROVAL→ TEST_DESIGN + TEST_APPROVAL
+#   CODING                → IMPLEMENTATION + TEST (loop on test failure)
+#   AUDITING              → AUDIT (ReviewerAI + CriticAI + SecurityAI in parallel)
+#   AWAITING_FINAL_APPROVAL→ FINAL_APPROVAL
+#   COMPLETE              → DEPLOY + LEARN (CuratorAI)
+#
+# Required workflow inputs:
+#   task         — High-level description of what to build or implement.
+#   test_command — Shell command to run automated tests
+#                  (e.g. "python -m pytest /workspace/tests/ -v").
+#
+# Optional inputs:
+#   project_name — Human-readable project name (shown in prompts and deploy env).
+#   context      — Additional background forwarded to RequirementsAI.
+#
+# Usage:
+#   POST /v1/workflows/executions
+#   {
+#     "workflow_name": "the-forge",
+#     "input": {
+#       "task": "Implement a thread-safe LRU cache in Python with full test coverage",
+#       "test_command": "python -m pytest /workspace/tests/ -v",
+#       "project_name": "my-project"
+#     }
+#   }
+#
+# Human gates (signal API):
+#   POST /v1/workflows/executions/<execution_id>/signal
+#   { "response": "approve" | "revise", "feedback": "optional guidance" }
+# Final approval:
+#   { "response": "approve" | "revise" | "reject", "feedback": "..." }
+#
+# FSM:
+#   REQUIREMENTS
+#      └──always──► ARCHITECTURE
+#                      └──always──► ARCH_APPROVAL (Human gate)
+#                                      ├──input_equals: approve──► TEST_DESIGN
+#                                      └──input_equals: revise──► ARCHITECTURE   (loop)
+#                                          └──always──► TEST_APPROVAL (Human gate)
+#                                                          ├──input_equals: approve──► IMPLEMENTATION
+#                                                          └──input_equals: revise──► TEST_DESIGN    (loop)
+#                                                              └──on_success──► TEST (System)
+#                                                                              │
+#                          ◄── exit_code_non_zero ──────────────────────────── ┘
+#                                                                              │ exit_code_zero
+#                                                                              ▼
+#                                                                          AUDIT (ParallelAgents)
+#                          ◄── score_below 0.8 ─────────────────────────────── ┤ (loop → IMPLEMENTATION)
+#                                                                              │ consensus >= 0.8
+#                                                                              ▼
+#                                                                    FINAL_APPROVAL (Human gate)
+#                                                                              ├──input_equals: approve──► DEPLOY
+#                                                                              ├──input_equals: revise──► IMPLEMENTATION  (loop)
+#                                                                              └──input_equals: reject──► DEPLOYMENT_REJECTED
+#                                                                                  └──on_success──► LEARN (CuratorAI)
 #
 # This workflow demonstrates:
 # - 7 specialized agents working in sequence
-# - Parallel execution of code reviewers
+# - 3 human-in-the-loop approval gates (arch, test, final)
+# - Parallel execution of code reviewers (code quality, design critique, security audit)
 # - Gradient validation at each stage
-# - Human-in-the-loop approval gates
-# - Cortex pattern injection
+# - CuratorAI constitutional learning at the end
+# - Shared persistent /workspace volume across all agent states
 
 apiVersion: 100monkeys.ai/v1
 kind: Workflow
 
 metadata:
   name: "the-forge"
-  version: "1.0.0"
-  description: "Constitutional development pipeline with 7 specialized agents"
+  version: "2.0.0"
+  description: |-
+    Full constitutional development lifecycle (ADR-020, Forge Blueprint).
+    RequirementsAI → ArchitectAI → [human gate] → TesterAI → [human gate] →
+    CoderAI → automated tests → parallel audit (ReviewerAI + CriticAI + SecurityAI)
+    → [human gate] → deploy → CuratorAI constitutional learning.
   labels:
     category: "development"
     pattern: "constitutional-pipeline"
+    requires-human: "true"
     stability: "production"
 
 spec:
-  # Global context
   context:
     project_name: "{{workflow.project_name}}"
-    development_task: "{{workflow.task}}"
-    review_threshold: 0.75
-    approval_required: true
+    review_threshold: 0.8
+
+  # Shared ephemeral workspace — all agent and system states mount /workspace.
+  # Related: ADR-032 (Unified Storage via SeaweedFS)
+  storage:
+    workspace:
+      storage_class: "ephemeral"
+      ttl_hours: 6
+      size_limit_mb: 2000
 
   initial_state: REQUIREMENTS
 
   states:
-    # ========================================================================
-    # State 1: REQUIREMENTS ANALYSIS
-    # Requirements analyst extracts and formalizes requirements
-    # ========================================================================
+
+    # ==========================================================================
+    # Phase 1: ANALYZING
+    # RequirementsAI decomposes the task into formal requirements and acceptance
+    # criteria, consulting the Knowledge Base (Cortex) for context.
+    # ==========================================================================
     REQUIREMENTS:
       kind: Agent
-      
       agent: "requirements-analyst"
-      
-      input: |
+      isolation: docker
+      volumes:
+        - volume: "{{workflow.storage.workspace}}"
+          mount_point: "/workspace"
+          access_mode: "read-write"
+      input: |-
         # Development Task
         {{workflow.task}}
-        
-        # Project Context
+
         {{#if workflow.context}}
+        # Additional Context
         {{workflow.context}}
         {{/if}}
-        
-        Analyze this development task and produce a comprehensive requirements specification.
-        Include functional requirements, non-functional requirements, acceptance criteria,
-        edge cases, and dependencies.
-      
-      timeout: 180s
-      
-      transitions:
-        - condition: always
-          target: ARCHITECTURE
 
-    # ========================================================================
-    # State 2: ARCHITECTURE DESIGN
-    # Architect designs technical solution
-    # ========================================================================
+        Analyse this task and produce a comprehensive requirements specification.
+        Include:
+        1. Functional requirements (numbered list)
+        2. Non-functional requirements (performance, security, maintainability)
+        3. Acceptance criteria (testable, specific)
+        4. Edge cases and failure modes
+        5. External dependencies and integration points
+
+        Write the specification to /workspace/requirements.md.
+      timeout: 3m
+      transitions:
+        - condition: on_success
+          target: ARCHITECTURE
+        - condition: on_failure
+          target: FAILED
+
+    # ==========================================================================
+    # Phase 2a: AWAITING_ARCH_APPROVAL — design
+    # ArchitectAI designs the technical solution against the requirements.
+    # CriticAI runs implicitly as the adversarial inner-loop judge during the
+    # agent's own execution cycle.
+    # ==========================================================================
     ARCHITECTURE:
       kind: Agent
-      
       agent: "architect-agent"
-      
-      input: |
+      isolation: docker
+      volumes:
+        - volume: "{{workflow.storage.workspace}}"
+          mount_point: "/workspace"
+          access_mode: "read-write"
+      input: |-
         # Requirements Specification
         {{REQUIREMENTS.output}}
-        
-        Design a technical architecture for this project. Include:
-        - High-level system design
-        - Component breakdown
-        - Data models and schemas
-        - API contracts / interfaces
-        - Technology choices with rationale
-        - Implementation approach
-      
-      timeout: 240s
-      
-      transitions:
-        - condition: always
-          target: TEST_DESIGN
 
-    # ========================================================================
-    # State 3: TEST DESIGN
-    # Test engineer creates comprehensive test strategy
-    # ========================================================================
-    TEST_DESIGN:
-      kind: Agent
-      
-      agent: "tester-agent"
-      
-      input: |
-        # Requirements
-        {{REQUIREMENTS.output}}
-        
-        # Architecture
-        {{ARCHITECTURE.output}}
-        
-        Design a comprehensive test strategy including:
-        - Unit test cases with pseudo-code
-        - Integration test scenarios
-        - End-to-end test flows
-        - Test data requirements
-        - Edge cases and negative tests
-        - Coverage targets
-      
-      timeout: 200s
-      
-      transitions:
-        - condition: always
-          target: IMPLEMENTATION
+        Design a complete technical architecture for this project. Produce:
+        1. High-level system design with component diagram (Mermaid.js)
+        2. Component breakdown and responsibilities
+        3. Data models and schemas
+        4. API contracts / interfaces
+        5. Technology choices with rationale
+        6. File structure: list every file to create or modify
+        7. Step-by-step implementation instructions for the CoderAI
+        8. Acceptance criteria the automated tests must satisfy
 
-    # ========================================================================
-    # State 4: IMPLEMENTATION
-    # Coder writes production-ready code
-    # ========================================================================
-    IMPLEMENTATION:
-      kind: Agent
-      
-      agent: "coder-agent"
-      
-      input: |
-        # Requirements
-        {{REQUIREMENTS.output}}
-        
-        # Architecture
-        {{ARCHITECTURE.output}}
-        
-        # Test Strategy
-        {{TEST_DESIGN.output}}
-        
-        Implement the solution following the architecture and requirements.
-        Include:
-        - Complete, runnable implementation
-        - Proper error handling
-        - Documentation and comments
-        - Unit tests for your code
-        
-        Code should be production-ready and follow best practices.
-      
-      timeout: 600s
-      
+        Write the architecture to /workspace/architecture.md.
+      timeout: 5m
       transitions:
-        - condition: always
-          target: PARALLEL_REVIEW
+        - condition: on_success
+          target: ARCH_APPROVAL
+        - condition: on_failure
+          target: FAILED
 
-    # ========================================================================
-    # State 5: PARALLEL REVIEW
-    # Three reviewers evaluate simultaneously: code quality, design, security
-    # ========================================================================
-    PARALLEL_REVIEW:
-      kind: ParallelAgents
-      
-      agents:
-        - agent: "code-reviewer-agent"
-          input: |
-            # Requirements
-            {{REQUIREMENTS.output}}
-            
-            # Architecture
-            {{ARCHITECTURE.output}}
-            
-            # Implementation
-            {{IMPLEMENTATION.output}}
-            
-            Review the code for correctness, quality, and completeness.
-            Provide assessment: PASS, NEEDS_WORK, or REJECT with specific feedback.
-          weight: 1.5
-        
-        - agent: "critic-agent"
-          input: |
-            # Requirements
-            {{REQUIREMENTS.output}}
-            
-            # Architecture
-            {{ARCHITECTURE.output}}
-            
-            # Implementation
-            {{IMPLEMENTATION.output}}
-            
-            Critically evaluate the overall solution design and architecture.
-            Assess if it truly solves the problem with appropriate complexity.
-            Provide design assessment score (0.0-1.0) and recommendation.
-          weight: 1.0
-        
-        - agent: "security-auditor-agent"
-          input: |
-            # Implementation
-            {{IMPLEMENTATION.output}}
-            
-            Perform security audit of the implementation.
-            Check for OWASP Top 10 vulnerabilities, injection attacks,
-            authentication/authorization issues, sensitive data exposure.
-            Provide risk assessment and specific vulnerabilities found.
-          weight: 1.2
-      
-      consensus:
-        strategy: weighted_average
-        threshold: 0.75
-      
-      timeout: 300s
-      
-      transitions:
-        # All reviewers approve (weighted average >= 0.75)
-        - condition: consensus
-          threshold: 0.75
-          min_agreement: 0.6
-          target: HUMAN_APPROVAL
-        
-        # Any reviewer rejects or low consensus
-        - condition: score_below
-          threshold: 0.75
-          target: REVIEW_FAILED
-          feedback: "{{PARALLEL_REVIEW.consensus.reasoning}}"
-
-    # ========================================================================
-    # State 6: HUMAN APPROVAL
-    # Human decision maker reviews and approves/rejects
-    # ========================================================================
-    HUMAN_APPROVAL:
+    # ==========================================================================
+    # Phase 2b: AWAITING_ARCH_APPROVAL — human gate
+    # Creator reviews the architecture and diagrams before any tests are written.
+    # ==========================================================================
+    ARCH_APPROVAL:
       kind: Human
-      
-      prompt: |
-        # The Forge Review - Human Approval Required
-        
-        ## Development Task
+      prompt: |-
+        # The Forge — Architecture Approval
+
+        ## Task
         {{workflow.task}}
-        
-        ## Requirements Analysis
+
+        ## Requirements
         {{REQUIREMENTS.output}}
-        
+
         ## Architecture Design
         {{ARCHITECTURE.output}}
-        
-        ## Test Strategy
-        {{TEST_DESIGN.output}}
-        
-        ## Implementation
-        {{IMPLEMENTATION.output}}
-        
-        ## Review Results
-        
-        ### Code Review Score: {{PARALLEL_REVIEW.agents.0.score}}
-        {{PARALLEL_REVIEW.agents.0.output}}
-        
-        ### Design Critique Score: {{PARALLEL_REVIEW.agents.1.score}}
-        {{PARALLEL_REVIEW.agents.1.output}}
-        
-        ### Security Audit Score: {{PARALLEL_REVIEW.agents.2.score}}
-        {{PARALLEL_REVIEW.agents.2.output}}
-        
-        ### Consensus Score: {{PARALLEL_REVIEW.consensus.score}}
-        
-        ---
-        
-        **Decision Required:** Approve for deployment or request revisions?
-        
-        Options:
-        - APPROVE: Deploy to production
-        - REVISE: Send back for improvements with feedback
-        - REJECT: Cancel deployment
-      
-      timeout: 3600s  # 1 hour for human review
-      
-      transitions:
-        - condition: approved
-          target: DEPLOY
-        
-        - condition: rejected
-          target: DEPLOYMENT_REJECTED
-        
-        - condition: timeout
-          target: APPROVAL_TIMEOUT
 
-    # ========================================================================
-    # State 7: DEPLOY
-    # Final deployment step (simulated)
-    # ========================================================================
+        ---
+
+        Review the architecture above. The TesterAI will write test cases based
+        on this design before any implementation code is written (TDD).
+
+        - Type **"approve"** to proceed to test design
+        - Type **"revise"** to send the architecture back for rework
+          (add feedback below to guide the revision)
+      timeout: 3600s
+      default_response: "revise"
+      transitions:
+        - condition: input_equals
+          value: "approve"
+          target: TEST_DESIGN
+        - condition: input_equals
+          value: "revise"
+          target: ARCHITECTURE
+          feedback: "{{human.feedback}}"
+
+    # ==========================================================================
+    # Phase 3a: AWAITING_TEST_APPROVAL — test generation
+    # TesterAI writes the full test suite *before* implementation (strict TDD).
+    # ==========================================================================
+    TEST_DESIGN:
+      kind: Agent
+      agent: "tester-agent"
+      isolation: docker
+      volumes:
+        - volume: "{{workflow.storage.workspace}}"
+          mount_point: "/workspace"
+          access_mode: "read-write"
+      input: |-
+        # Requirements
+        {{REQUIREMENTS.output}}
+
+        # Architecture
+        {{ARCHITECTURE.output}}
+
+        Generate a comprehensive test suite that the CoderAI must make pass.
+        This follows strict TDD — tests are written before the implementation.
+
+        Produce:
+        1. Unit tests for each component (with full test code, not pseudo-code)
+        2. Integration test scenarios
+        3. Edge case and negative tests
+        4. Test data setup / teardown
+        5. Coverage targets (aim for ≥ 90% line and branch coverage)
+
+        Write all test files to /workspace/tests/ using the project's test runner
+        convention. The test command that will be used is:
+          {{workflow.test_command}}
+
+        Also write /workspace/test-strategy.md summarising the strategy.
+      timeout: 5m
+      transitions:
+        - condition: on_success
+          target: TEST_APPROVAL
+        - condition: on_failure
+          target: FAILED
+
+    # ==========================================================================
+    # Phase 3b: AWAITING_TEST_APPROVAL — human gate
+    # Creator approves the test suite before CoderAI writes a single line of
+    # implementation code.
+    # ==========================================================================
+    TEST_APPROVAL:
+      kind: Human
+      prompt: |-
+        # The Forge — Test Suite Approval
+
+        ## Task
+        {{workflow.task}}
+
+        ## Architecture
+        {{ARCHITECTURE.output}}
+
+        ## Proposed Test Suite
+        {{TEST_DESIGN.output}}
+
+        ---
+
+        The CoderAI will now write implementation code solely to make these
+        tests pass. No implementation exists yet.
+
+        - Type **"approve"** to proceed to implementation
+        - Type **"revise"** to send the test suite back for rework
+      timeout: 3600s
+      default_response: "revise"
+      transitions:
+        - condition: input_equals
+          value: "approve"
+          target: IMPLEMENTATION
+        - condition: input_equals
+          value: "revise"
+          target: TEST_DESIGN
+          feedback: "{{human.feedback}}"
+
+    # ==========================================================================
+    # Phase 4: CODING — implementation
+    # CoderAI writes the implementation to make the approved test suite pass.
+    # After writing code the pipeline immediately runs the tests (next state).
+    # If tests fail, or the audit panel rejects, feedback loops back here.
+    # ==========================================================================
+    IMPLEMENTATION:
+      kind: Agent
+      agent: "coder-agent"
+      isolation: docker
+      volumes:
+        - volume: "{{workflow.storage.workspace}}"
+          mount_point: "/workspace"
+          access_mode: "read-write"
+      input: |-
+        # Requirements
+        {{REQUIREMENTS.output}}
+
+        # Architecture
+        {{ARCHITECTURE.output}}
+
+        # Test Suite (you must make these tests pass)
+        {{TEST_DESIGN.output}}
+
+        {{#if state.feedback}}
+        # Previous Attempt Failed
+        {{state.feedback}}
+
+        Fix the issues described above. The tests are already written — do not
+        modify them. Only change implementation files.
+        {{/if}}
+
+        Write production-ready implementation code to /workspace/ following the
+        architecture specification. Include:
+        - Complete, runnable implementation (every file listed in the architecture)
+        - Proper error handling and input validation
+        - Inline documentation (docstrings / JSDoc)
+        - All code required to make the test suite pass
+
+        Do NOT modify files under /workspace/tests/.
+      timeout: 15m
+      transitions:
+        - condition: on_success
+          target: TEST
+        - condition: on_failure
+          target: FAILED
+
+    # ==========================================================================
+    # Phase 4 (continued): CODING — Secure Execution Environment test run
+    # Automated tests verify the implementation. Zero exit code advances to
+    # the audit panel. Non-zero loops back to IMPLEMENTATION with test output.
+    # ==========================================================================
+    TEST:
+      kind: System
+      command: "{{workflow.test_command}}"
+      workdir: /workspace
+      volumes:
+        - volume: "{{workflow.storage.workspace}}"
+          mount_point: "/workspace"
+          access_mode: "read-only"
+      timeout: 10m
+      transitions:
+        - condition: exit_code_zero
+          target: AUDIT
+        - condition: exit_code_non_zero
+          target: IMPLEMENTATION
+          feedback: |-
+            The automated test suite failed. Fix the implementation to make all
+            tests pass. Do NOT modify test files.
+
+            Test output:
+            {{TEST.stderr}}
+
+            stdout:
+            {{TEST.stdout}}
+
+    # ==========================================================================
+    # Phase 5: AUDITING
+    # Three specialist agents audit in parallel once tests pass:
+    #   ReviewerAI  (The Guardian)  — constitutional conformance audit
+    #   CriticAI    (The Adversary) — adversarial design & logic critique
+    #   SecurityAI  (The Sentinel)  — OWASP Top 10 / SAST security audit
+    #
+    # Weighted-average consensus >= 0.8 advances to FINAL_APPROVAL.
+    # Below threshold loops back to IMPLEMENTATION with all three reports.
+    # ==========================================================================
+    AUDIT:
+      kind: ParallelAgents
+      agents:
+        - agent: "code-reviewer-agent"
+          input: |-
+            Perform a constitutional conformance audit of the implementation.
+            Check:
+            - Adherence to architectural patterns from the design plan
+            - Naming conventions and code style
+            - Correctness against every acceptance criterion
+            - Completeness (every file in the architecture is present)
+            - Error handling and edge case coverage
+
+            Requirements:
+            {{REQUIREMENTS.output}}
+
+            Architecture design:
+            {{ARCHITECTURE.output}}
+
+            Implementation (workspace snapshot):
+            {{IMPLEMENTATION.output}}
+
+            Respond with JSON: { "score": 0.0–1.0, "confidence": 0.0–1.0,
+            "reasoning": "...", "suggestions": [...] }
+          weight: 1.5
+          timeout_seconds: 600
+
+        - agent: "critic-agent"
+          input: |-
+            You are an adversarial reviewer. Find every flaw in this implementation.
+            Look for:
+            - Logical inconsistencies or incorrect algorithm choices
+            - Scalability and performance problems
+            - Over-engineering or unnecessary complexity
+            - Failure to meet the stated requirements
+            - Missing edge cases not caught by the test suite
+
+            Requirements:
+            {{REQUIREMENTS.output}}
+
+            Architecture design:
+            {{ARCHITECTURE.output}}
+
+            Implementation:
+            {{IMPLEMENTATION.output}}
+
+            Test results (all passing):
+            {{TEST.stdout}}
+
+            Respond with JSON: { "score": 0.0–1.0, "confidence": 0.0–1.0,
+            "reasoning": "...", "suggestions": [...] }
+          weight: 1.0
+          timeout_seconds: 600
+
+        - agent: "security-auditor-agent"
+          input: |-
+            Perform a security audit (SAST + dependency risk assessment).
+            Check for:
+            - OWASP Top 10 vulnerabilities (injection, XSS, broken auth, etc.)
+            - Sensitive data exposure or insecure storage
+            - Insecure deserialization
+            - Hardcoded secrets or credentials
+            - Dependency vulnerabilities (list any known CVEs)
+            - Missing input validation or sanitisation
+
+            Implementation:
+            {{IMPLEMENTATION.output}}
+
+            Respond with JSON: { "score": 0.0–1.0, "confidence": 0.0–1.0,
+            "reasoning": "...", "suggestions": [...], "cve_risks": [...] }
+          weight: 1.2
+          timeout_seconds: 900
+
+      consensus:
+        strategy: weighted_average
+        threshold: 0.8
+        min_agreement_confidence: 0.65
+        min_judges_required: 2
+        confidence_weighting:
+          agreement_factor: 0.7
+          self_confidence_factor: 0.3
+      timeout: 25m
+      transitions:
+        - condition: consensus
+          threshold: 0.8
+          agreement: 0.65
+          target: FINAL_APPROVAL
+        - condition: score_below
+          threshold: 0.8
+          target: IMPLEMENTATION
+          feedback: |-
+            Audit panel rejected the implementation
+            (consensus score: {{AUDIT.consensus.score}}, confidence: {{AUDIT.consensus.confidence}}).
+
+            Constitutional audit (score: {{AUDIT.agents.0.score}}):
+            {{AUDIT.agents.0.output}}
+
+            Adversarial critique (score: {{AUDIT.agents.1.score}}):
+            {{AUDIT.agents.1.output}}
+
+            Security audit (score: {{AUDIT.agents.2.score}}):
+            {{AUDIT.agents.2.output}}
+
+            Fix all identified issues and ensure the test suite still passes.
+
+    # ==========================================================================
+    # Phase 6: AWAITING_FINAL_APPROVAL — human gate
+    # Creator reviews the full pipeline output and makes the deployment decision.
+    # "revise" loops back to IMPLEMENTATION with their feedback.
+    # ==========================================================================
+    FINAL_APPROVAL:
+      kind: Human
+      prompt: |-
+        # The Forge — Final Approval
+
+        ## Task
+        {{workflow.task}}
+
+        ## Requirements
+        {{REQUIREMENTS.output}}
+
+        ## Architecture
+        {{ARCHITECTURE.output}}
+
+        ## Test Results (all passing)
+        {{TEST.stdout}}
+
+        ## Audit Results
+
+        ### Constitutional Review (score: {{AUDIT.agents.0.score}})
+        {{AUDIT.agents.0.output}}
+
+        ### Adversarial Critique (score: {{AUDIT.agents.1.score}})
+        {{AUDIT.agents.1.output}}
+
+        ### Security Audit (score: {{AUDIT.agents.2.score}})
+        {{AUDIT.agents.2.output}}
+
+        ### Consensus Score: {{AUDIT.consensus.score}} / 1.0
+
+        ---
+
+        All automated checks passed. Make the final deployment decision:
+
+        - Type **"approve"** — deploy to production
+        - Type **"revise"** — return to implementation with your feedback
+        - Type **"reject"** — cancel this deployment permanently
+      timeout: 3600s
+      default_response: "reject"
+      transitions:
+        - condition: input_equals
+          value: "approve"
+          target: DEPLOY
+        - condition: input_equals
+          value: "revise"
+          target: IMPLEMENTATION
+          feedback: "{{human.feedback}}"
+        - condition: input_equals
+          value: "reject"
+          target: DEPLOYMENT_REJECTED
+
+    # ==========================================================================
+    # Phase 7: COMPLETE — deploy
+    # ==========================================================================
     DEPLOY:
       kind: System
-      
       command: "echo"
-      
       env:
-        MESSAGE: "Deployment successful - The Forge pipeline complete"
+        MESSAGE: "The Forge pipeline complete — deployment approved"
         PROJECT: "{{workflow.context.project_name}}"
-        CONSENSUS_SCORE: "{{PARALLEL_REVIEW.consensus.score}}"
-        HUMAN_DECISION: "APPROVED"
-        FINAL_CODE: "{{IMPLEMENTATION.output}}"
-      
-      transitions: []  # Terminal state
+        CONSENSUS_SCORE: "{{AUDIT.consensus.score}}"
+      transitions:
+        - condition: always
+          target: LEARN
 
-    # ========================================================================
-    # Terminal States: Error Conditions
-    # ========================================================================
-    
-    REVIEW_FAILED:
-      kind: System
-      
-      command: "echo"
-      
-      env:
-        MESSAGE: "Review failed - refinement needed"
-        REASON: "{{state.feedback}}"
-        CONSENSUS_SCORE: "{{PARALLEL_REVIEW.consensus.score}}"
-      
-      transitions: []
-    
+    # ==========================================================================
+    # Phase 8: COMPLETE — CuratorAI constitutional learning
+    # Analyses the approved diff for patterns that should update the Project
+    # Constitution, making future agents more aligned with team standards.
+    # ==========================================================================
+    LEARN:
+      kind: Agent
+      agent: "curator-agent"
+      isolation: docker
+      volumes:
+        - volume: "{{workflow.storage.workspace}}"
+          mount_point: "/workspace"
+          access_mode: "read-only"
+      input: |-
+        # Constitutional Learning — Post-Deployment Analysis
+
+        ## Task that was implemented
+        {{workflow.task}}
+
+        ## Final approved implementation
+        {{IMPLEMENTATION.output}}
+
+        ## Audit scores
+        - Constitutional review: {{AUDIT.agents.0.score}}
+        - Adversarial critique:  {{AUDIT.agents.1.score}}
+        - Security audit:        {{AUDIT.agents.2.score}}
+        - Weighted consensus:    {{AUDIT.consensus.score}}
+
+        Analyse the approved implementation for patterns, conventions, or
+        architectural decisions that deviate from or enrich the current Project
+        Constitution. For each pattern identified, propose a specific, actionable
+        update to the constitution that would make future agents more aligned
+        with this team's standards.
+
+        Write proposed constitution updates to /workspace/constitution-proposals.md.
+      timeout: 5m
+      transitions:
+        - condition: always
+          target: ~  # Terminal — pipeline complete
+
+    # ==========================================================================
+    # Terminal error states
+    # ==========================================================================
+
     DEPLOYMENT_REJECTED:
       kind: System
-      
       command: "echo"
-      
       env:
-        MESSAGE: "Deployment rejected by human reviewer"
-        CONSENSUS_SCORE: "{{PARALLEL_REVIEW.consensus.score}}"
-      
-      transitions: []
-    
-    APPROVAL_TIMEOUT:
+        MESSAGE: "Deployment rejected by human reviewer — pipeline terminated"
+        CONSENSUS_SCORE: "{{AUDIT.consensus.score}}"
+      transitions: []  # Terminal
+
+    FAILED:
       kind: System
-      
       command: "echo"
-      
       env:
-        MESSAGE: "Human approval timeout - deployment cancelled"
-        TIMEOUT: "3600s"
-      
-      transitions: []
+        MESSAGE: "The Forge pipeline encountered an unrecoverable agent failure"
+      transitions: []  # Terminal
