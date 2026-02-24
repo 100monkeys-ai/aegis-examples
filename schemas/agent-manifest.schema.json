@@ -242,11 +242,15 @@
                     "format": {
                       "type": "string",
                       "description": "Expected output format",
-                      "enum": ["json", "yaml", "text"]
+                      "enum": ["json", "yaml", "text", "csv", "pdf"]
                     },
                     "schema": {
                       "type": "object",
                       "description": "JSON Schema for output validation"
+                    },
+                    "regex": {
+                      "type": "string",
+                      "description": "Regex pattern for text output validation"
                     }
                   }
                 },
@@ -276,8 +280,8 @@
                   "properties": {
                     "enabled": {
                       "type": "boolean",
-                      "description": "Enable semantic validation",
-                      "default": false
+                      "description": "Enable semantic validation. Defaults to true when task.instruction is present.",
+                      "default": true
                     },
                     "model": {
                       "type": "string",
@@ -373,6 +377,194 @@
               },
               "description": {
                 "type": "string"
+              }
+            }
+          }
+        },
+        "volumes": {
+          "type": "array",
+          "description": "Storage volume mounts for the agent execution (ADR-032)",
+          "items": {
+            "type": "object",
+            "required": ["name", "storage_class", "mount_point", "access_mode"],
+            "properties": {
+              "name": {
+                "type": "string",
+                "description": "Unique volume identifier within the manifest"
+              },
+              "storage_class": {
+                "type": "string",
+                "description": "Storage duration class",
+                "enum": ["ephemeral", "persistent"]
+              },
+              "mount_point": {
+                "type": "string",
+                "description": "Absolute path inside the container where the volume is mounted"
+              },
+              "access_mode": {
+                "type": "string",
+                "description": "Access permissions for the volume",
+                "enum": ["read-only", "read-write"]
+              },
+              "ttl_hours": {
+                "type": "integer",
+                "description": "Time-To-Live in hours; required for ephemeral volumes",
+                "minimum": 1
+              },
+              "size_limit_mb": {
+                "type": "integer",
+                "description": "Maximum size in megabytes; required for ephemeral volumes",
+                "minimum": 1,
+                "maximum": 10000,
+                "default": 1000
+              },
+              "source": {
+                "type": "object",
+                "description": "Volume source; required for persistent volumes",
+                "properties": {
+                  "volume_id": {
+                    "type": "string",
+                    "description": "UUID of a pre-created persistent volume (supports template variables, e.g. {{input.dataset_volume_id}})"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "delivery": {
+          "type": "object",
+          "description": "Output delivery configuration",
+          "properties": {
+            "destinations": {
+              "type": "array",
+              "description": "Delivery destinations evaluated in order",
+              "items": {
+                "type": "object",
+                "required": ["type"],
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "description": "Unique destination identifier"
+                  },
+                  "condition": {
+                    "type": "string",
+                    "description": "When to trigger this destination",
+                    "enum": ["on_success", "on_failure", "always"],
+                    "default": "always"
+                  },
+                  "transform": {
+                    "type": "object",
+                    "description": "Optional ETL transform applied before delivery",
+                    "properties": {
+                      "script": {
+                        "type": "string",
+                        "description": "Path to transform script"
+                      },
+                      "args": {
+                        "type": "array",
+                        "items": { "type": "string" }
+                      },
+                      "timeout_seconds": {
+                        "type": "integer",
+                        "minimum": 1,
+                        "default": 30
+                      }
+                    }
+                  },
+                  "type": {
+                    "type": "string",
+                    "description": "Delivery channel type",
+                    "enum": ["email", "webhook", "rest"]
+                  },
+                  "email": {
+                    "type": "object",
+                    "properties": {
+                      "to": {
+                        "oneOf": [
+                          { "type": "string" },
+                          { "type": "array", "items": { "type": "string" } }
+                        ]
+                      },
+                      "subject": { "type": "string" },
+                      "body_template": { "type": "string" },
+                      "attachments": {
+                        "type": "array",
+                        "items": { "type": "string" }
+                      }
+                    }
+                  },
+                  "webhook": {
+                    "type": "object",
+                    "properties": {
+                      "url": { "type": "string", "format": "uri" },
+                      "method": {
+                        "type": "string",
+                        "enum": ["POST", "PUT", "PATCH"],
+                        "default": "POST"
+                      },
+                      "headers": {
+                        "type": "object",
+                        "additionalProperties": { "type": "string" }
+                      }
+                    }
+                  },
+                  "rest": {
+                    "type": "object",
+                    "properties": {
+                      "url": { "type": "string", "format": "uri" },
+                      "method": {
+                        "type": "string",
+                        "enum": ["POST", "PUT", "PATCH"],
+                        "default": "POST"
+                      },
+                      "headers": {
+                        "type": "object",
+                        "additionalProperties": { "type": "string" }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "advanced": {
+          "type": "object",
+          "description": "Advanced agent configuration",
+          "properties": {
+            "warm_pool_size": {
+              "type": "integer",
+              "description": "Number of warm instances to pre-provision",
+              "minimum": 0,
+              "default": 0
+            },
+            "swarm_enabled": {
+              "type": "boolean",
+              "description": "Enable swarm capabilities for spawning child agents",
+              "default": false
+            },
+            "startup_script": {
+              "type": "string",
+              "description": "Shell script executed before agent code runs"
+            },
+            "health_check": {
+              "type": "object",
+              "description": "Health check configuration",
+              "properties": {
+                "path": {
+                  "type": "string",
+                  "description": "HTTP path for health check endpoint"
+                },
+                "interval_seconds": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "default": 30
+                },
+                "timeout_seconds": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "default": 5
+                }
               }
             }
           }

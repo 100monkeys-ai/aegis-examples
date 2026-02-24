@@ -7,7 +7,7 @@ See the [Getting Started guide](https://docs.aegis.ai/docs/getting-started) for 
 ## Files
 
 | File | Purpose |
-|---|---|
+| --- | --- |
 | `docker-compose.yml` | All backing services (Postgres, Temporal, SeaweedFS, Keycloak, Ollama, Cortex) |
 | `aegis-config.yaml` | Reference AEGIS node configuration (mounted into the aegis-runtime container) |
 | `.env.example` | Environment variable template |
@@ -38,18 +38,17 @@ docker compose -f deploy/docker-compose.yml exec ollama ollama pull phi3:mini
 ## Services
 
 | Service | URL | Purpose |
-|---|---|---|
-| AEGIS Runtime | http://localhost:8088 | Orchestrator HTTP API |
+| --- | --- | --- |
+| AEGIS Runtime | <http://localhost:8088> | Orchestrator HTTP API |
 | AEGIS gRPC | localhost:50051 | gRPC for worker activities |
-| Temporal UI | http://localhost:8233 | Workflow visibility |
+| Temporal UI | <http://localhost:8233> | Workflow visibility |
 | Temporal gRPC | localhost:7233 | Temporal client endpoint |
-| SeaweedFS Master | http://localhost:9333 | Storage cluster admin |
-| SeaweedFS Filer | http://localhost:8888 | POSIX file API |
-| SeaweedFS WebDAV | http://localhost:7333 | File browser |
-| Keycloak | http://localhost:8090 | Identity provider admin |
-| Ollama | http://localhost:11434 | Local LLM inference |
+| SeaweedFS Master | <http://localhost:9333> | Storage cluster admin |
+| SeaweedFS Filer | <http://localhost:8888> | POSIX file API |
+| SeaweedFS WebDAV | <http://localhost:7333> | File browser |
+| Keycloak | <http://localhost:8090> | Identity provider admin |
+| Ollama | <http://localhost:11434> | Local LLM inference |
 | PostgreSQL | localhost:5432 | Primary data store |
-| Neo4j | http://localhost:7474 | Cortex knowledge graph |
 
 ## GPU Support (Ollama)
 
