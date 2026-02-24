@@ -2,9 +2,6 @@
 #
 # This workflow replicates the original hardcoded ExecutionSupervisor behavior:
 # Generate → Execute → Validate → Refine (loop)
-#
-# This is the default workflow for backward compatibility and serves as
-# a reference implementation for the classic iterative refinement pattern.
 
 apiVersion: 100monkeys.ai/v1
 kind: Workflow
