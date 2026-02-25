@@ -36,6 +36,31 @@ spec:
           model: "qwen2.5-coder:7b"
           capabilities: ["code"]
           context_window: 4096
+        - alias: "smart"
+          model: "phi3:mini"
+          capabilities: ["code", "reasoning"]
+          context_window: 4096
+        - alias: "cheap"
+          model: "qwen2.5-coder:7b"
+          capabilities: ["code"]
+          context_window: 4096
+        - alias: "local"
+          model: "phi3:mini"
+          capabilities: ["code", "reasoning"]
+          context_window: 4096
+    # Uncomment to add a cloud provider:
+    # - name: "openai"
+    #   type: "openai"
+    #   api_key: "env:OPENAI_API_KEY"
+    #   models:
+    #     - alias: "smart"
+    #       model: "gpt-4o"
+    #       capabilities: ["code", "reasoning"]
+    #       context_window: 128000
+    #     - alias: "fast"
+    #       model: "gpt-4o-mini"
+    #       capabilities: ["code"]
+    #       context_window: 128000
 
   llm_selection:
     strategy: "prefer-local"
@@ -50,7 +75,7 @@ spec:
     # Orchestrator URL for agent bootstrap script callbacks (used inside containers)
     # Supports env:VAR_NAME syntax to read from environment variable
     orchestrator_url: "env:AEGIS_ORCHESTRATOR_URL"
-    # NFS server hostname/IP for volume mounts (ADR-036: NFS Server Gateway)
+    # NFS server hostname/IP for volume mounts
     # CRITICAL: Must be resolvable from the host OS where the Docker daemon runs, NOT the container network.
     #
     # Platform-specific values:

@@ -13,6 +13,7 @@ spec:
   runtime:
     language: "python"
     version: "3.10"
+    model: "smart"
 
   
   task:

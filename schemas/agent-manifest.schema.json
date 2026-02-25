@@ -76,6 +76,11 @@
               "description": "Isolation mode",
               "enum": ["inherit", "firecracker", "docker", "process"],
               "default": "inherit"
+            },
+            "model": {
+              "type": "string",
+              "description": "Model alias for LLM selection (e.g. 'default', 'fast', 'smart'). Must match an alias configured in the node's spec.llm_providers.",
+              "default": "default"
             }
           }
         },
