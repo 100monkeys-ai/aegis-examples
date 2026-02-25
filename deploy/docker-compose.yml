@@ -110,6 +110,9 @@ services:
   # AEGIS Runtime Service (Rust gRPC Server)
   aegis-runtime:
     image: ghcr.io/100monkeys-ai/aegis-runtime:latest
+    # build:
+    #   context: ../../aegis-orchestrator
+    #   dockerfile: docker/Dockerfile.runtime
     container_name: aegis-runtime
     depends_on:
       postgres:
@@ -134,6 +137,8 @@ services:
       # NFS Server hostname for volume mounts (accessed by the Docker daemon on the host, not the container network).
       # See .env.example for platform-specific values.
       # - AEGIS_NFS_HOST=${AEGIS_NFS_HOST}
+      # Keep agent container after execution (for debugging)
+      - AEGIS_KEEP_CONTAINER=${AEGIS_KEEP_CONTAINER:-false}
     ports:
       - "8088:8088"   # AEGIS HTTP API
       - "50051:50051" # gRPC for worker activities
