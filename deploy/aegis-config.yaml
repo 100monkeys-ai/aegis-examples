@@ -119,7 +119,7 @@ spec:
 
   network:
     # bind_address: "0.0.0.0"  # Optional (default: 0.0.0.0)
-    # port: 8000               # Optional (default: 8000)
+    # port: 8088               # Optional (default: 8088)
     # grpc_port: 50051         # Optional (default: 50051)
 
   observability:
