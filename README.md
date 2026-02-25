@@ -24,9 +24,9 @@ curl -fsSL https://github.com/100monkeys-ai/aegis-orchestrator/releases/latest/d
 
 # Deploy and run the hello-world example
 aegis agent deploy ./agents/hello-world/agent.yaml
-aegis execute --agent hello-world \
+aegis task execute hello-world \
   --input '{"task": "Write a Python function that returns the Fibonacci sequence up to n."}' \
-  --watch
+  --follow
 ```
 
 See [deploy/README.md](deploy/README.md) for full details and the [Getting Started guide](https://docs.aegis.ai/docs/getting-started) for a step-by-step walkthrough.
@@ -61,9 +61,9 @@ The introductory agent. Writes a Python function, tests it, and iteratively refi
 
 ```bash
 aegis agent deploy ./agents/hello-world/agent.yaml
-aegis execute --agent hello-world \
+aegis task execute hello-world \
   --input '{"task": "Write a Python function that returns the Fibonacci sequence up to n."}' \
-  --watch
+  --follow
 ```
 
 ---
@@ -149,7 +149,7 @@ aegis workflow deploy ./agents/workflows/stateful-pipeline.yaml
 aegis workflow start stateful-pipeline --input '{"task": "quantum entanglement", "max_words": 150}'
 
 # Monitor
-aegis workflow status <execution-id> --watch
+aegis workflow status <execution-id> --follow
 ```
 
 See the [Workflow Manifest Reference](https://docs.aegis.ai/docs/reference/workflow-manifest) and the [Building Workflows guide](https://docs.aegis.ai/docs/guides/building-workflows) for full documentation.
@@ -188,9 +188,9 @@ See the [Workflow Manifest Reference](https://docs.aegis.ai/docs/reference/workf
    ```bash
    # Start with the hello-world example — no API keys required with local Ollama
    aegis agent deploy ./agents/hello-world/agent.yaml
-   aegis execute --agent hello-world \
+   aegis task execute hello-world \
      --input '{"task": "Write a Python function that returns the Fibonacci sequence up to n."}' \
-     --watch
+     --follow
    ```
 
 ### Creating Your Own Agent
@@ -262,7 +262,7 @@ AEGIS agents are **manifest-only** — there is no agent-side Python script. The
 
    ```bash
    aegis agent deploy ./my-agent/agent.yaml
-   aegis execute --agent my-agent --input '{"task": "Your task here"}' --watch
+   aegis task execute my-agent --input '{"task": "Your task here"}' --follow
    ```
 
 ## Agent Manifest Reference
@@ -275,7 +275,7 @@ AEGIS manifests follow a Kubernetes-style `apiVersion/kind/metadata/spec` schema
 apiVersion: 100monkeys.ai/v1
 kind: Agent
 metadata:
-  name: "agent-name"     # Unique identifier, used as --agent value
+  name: "agent-name"     # Unique identifier, used as value
   version: "1.0.0"
   description: "What this agent does"
   labels:

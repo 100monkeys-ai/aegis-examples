@@ -12,7 +12,7 @@ Connects to Gmail and generates daily email summaries.
 
 ```bash
 aegis agent deploy ./agents/email-summarizer/agent.yaml
-aegis execute --agent email-summarizer --input '{"criteria": "Summarize all unread emails from today"}' --watch
+aegis task execute email-summarizer --input '{"criteria": "Summarize all unread emails from today"}' --follow
 ```
 
 ## Configuration

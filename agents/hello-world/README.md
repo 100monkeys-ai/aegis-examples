@@ -19,10 +19,10 @@ This is the agent used in the [Getting Started guide](https://docs.aegis.ai/docs
 aegis agent deploy ./agents/hello-world/agent.yaml
 
 # Run an execution
-aegis execute \
-  --agent hello-world \
+aegis task execute \
+  hello-world \
   --input '{"task": "Write a Python function that returns the Fibonacci sequence up to n."}' \
-  --watch
+  --follow
 ```
 
 Expected output:
