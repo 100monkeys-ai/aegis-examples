@@ -107,3 +107,21 @@ spec:
   observability:
     logging:
       level: "info"
+
+  # PostgreSQL database for persistent state
+  database:
+    url: "env:AEGIS_DATABASE_URL"
+    max_connections: 5
+    connect_timeout_seconds: 5
+
+  # Temporal workflow engine
+  temporal:
+    address: "temporal:7233"
+    worker_http_endpoint: "http://aegis-runtime:3000"
+    worker_secret: "env:TEMPORAL_WORKER_SECRET"
+    namespace: "default"
+    task_queue: "aegis-agents"
+
+  # Cortex memory service
+  cortex:
+    grpc_url: "http://cortex:50052"

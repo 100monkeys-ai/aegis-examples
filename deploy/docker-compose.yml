@@ -119,16 +119,17 @@ services:
       ollama:
         condition: service_healthy
     environment:
-      - AEGIS_DATABASE_URL=postgresql://aegis:aegis@postgres:5432/aegis
       - RUST_LOG=info,aegis_orchestrator=debug
-      - AEGIS_WORKER_HTTP_ENDPOINT=http://temporal-worker:3000
-      - TEMPORAL_ADDRESS=temporal:7233
-      - AEGIS_ENABLE_DISK_QUOTAS=false  # Disable disk quotas on WSL/macOS (no XFS+pquota)
-      # Docker network for agent containers
-      # Referenced in aegis-config.yaml via: runtime.docker_network_mode: "env:AEGIS_DOCKER_NETWORK"
+      # -----------------------------------------------------------------------
+      # Environment variables below are referenced by aegis-config.yaml via
+      # the "env:VAR_NAME" syntax. The actual service configuration (database,
+      # temporal, cortex) lives in aegis-config.yaml — NOT here.
+      # -----------------------------------------------------------------------
+      # Database connection URL (referenced by spec.database.url)
+      - AEGIS_DATABASE_URL=postgresql://aegis:aegis@postgres:5432/aegis
+      # Docker network for agent containers (referenced by spec.runtime.docker_network_mode)
       - AEGIS_DOCKER_NETWORK=${AEGIS_DOCKER_NETWORK:-aegis-network}
-      # Agent bootstrap orchestrator callback URL (used by assets/bootstrap.py)
-      # Referenced in aegis-config.yaml via: runtime.orchestrator_url: "env:AEGIS_ORCHESTRATOR_URL"
+      # Agent bootstrap orchestrator callback URL (referenced by spec.runtime.orchestrator_url)
       - AEGIS_ORCHESTRATOR_URL=${AEGIS_ORCHESTRATOR_URL:-http://aegis-runtime:8088}
       # NFS Server hostname for volume mounts (accessed by the Docker daemon on the host, not the container network).
       # See .env.example for platform-specific values.
