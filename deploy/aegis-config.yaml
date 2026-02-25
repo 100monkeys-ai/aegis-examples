@@ -140,7 +140,3 @@ spec:
     worker_secret: "env:TEMPORAL_WORKER_SECRET"
     namespace: "default"
     task_queue: "aegis-agents"
-
-  # Cortex memory service
-  cortex:
-    grpc_url: "http://cortex:50052"
