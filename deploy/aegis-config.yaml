@@ -1,7 +1,8 @@
 # AEGIS Agent Host - Minimal Configuration
 #
 # This is a minimal configuration to get started.
-# Refer to https://docs.aegis.ai/docs/deployment/configuration for full documentation.
+# Refer to https://docs.aegis.ai/docs/reference/node-config for the full specification.
+# Refer to https://docs.aegis.ai/docs/deployment/configuration for an annotated walkthrough.
 
 # Kubernetes-style manifest format (required)
 apiVersion: 100monkeys.ai/v1
@@ -27,40 +28,50 @@ spec:
     - name: "local"
       type: "ollama"
       endpoint: "http://ollama:11434"
+      enabled: true
       models:
         - alias: "default"
           model: "phi3:mini"
           capabilities: ["code", "reasoning"]
           context_window: 4096
+          cost_per_1k_tokens: 0.0
         - alias: "fast"
           model: "qwen2.5-coder:7b"
           capabilities: ["code"]
           context_window: 4096
+          cost_per_1k_tokens: 0.0
         - alias: "smart"
           model: "phi3:mini"
           capabilities: ["code", "reasoning"]
           context_window: 4096
+          cost_per_1k_tokens: 0.0
         - alias: "cheap"
           model: "qwen2.5-coder:7b"
           capabilities: ["code"]
           context_window: 4096
+          cost_per_1k_tokens: 0.0
         - alias: "local"
           model: "phi3:mini"
           capabilities: ["code", "reasoning"]
           context_window: 4096
+          cost_per_1k_tokens: 0.0
     # Uncomment to add a cloud provider:
     # - name: "openai"
     #   type: "openai"
+    #   endpoint: "https://api.openai.com/v1"
     #   api_key: "env:OPENAI_API_KEY"
+    #   enabled: true
     #   models:
     #     - alias: "smart"
     #       model: "gpt-4o"
     #       capabilities: ["code", "reasoning"]
     #       context_window: 128000
+    #       cost_per_1k_tokens: 0.005
     #     - alias: "fast"
     #       model: "gpt-4o-mini"
     #       capabilities: ["code"]
     #       context_window: 128000
+    #       cost_per_1k_tokens: 0.00015
 
   llm_selection:
     strategy: "prefer-local"
@@ -69,6 +80,8 @@ spec:
     retry_delay_ms: 1000
 
   runtime:
+    # Default isolation mode for agent execution
+    default_isolation: "docker"
     # Docker network for agent containers (only used when running in Docker)
     # Supports env:VAR_NAME syntax to read from environment variable
     docker_network_mode: "env:AEGIS_DOCKER_NETWORK"
@@ -85,6 +98,8 @@ spec:
     #   - Remote / VM host: <Physical Host IP>
     #
     # nfs_server_host: "env:AEGIS_NFS_HOST"  # Required for Docker deployments with volumes
+    # nfs_port: 2049
+    # nfs_mountport: 2049
 
   storage:
     backend: "seaweedfs"
@@ -98,15 +113,19 @@ spec:
       gc_interval_minutes: 60
     local:
       base_path: "/var/lib/aegis/local-volumes"
-      max_total_size_gb: 50
+      default_ttl_hours: 24
+      default_size_limit_mb: 1000
+      max_size_limit_mb: 10000
 
   network:
     # bind_address: "0.0.0.0"  # Optional (default: 0.0.0.0)
     # port: 8000               # Optional (default: 8000)
+    # grpc_port: 50051         # Optional (default: 50051)
 
   observability:
     logging:
       level: "info"
+      format: "json"
 
   # PostgreSQL database for persistent state
   database:
