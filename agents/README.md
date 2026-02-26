@@ -244,7 +244,6 @@ agent:
   version: "0.1.0"
   description: "A technical agent that provides code snippets."
   runtime: "python:3.10-slim"
-  autopull: true
   task:
     instruction: "You are an expert Rust programmer..."
   execution:
@@ -318,7 +317,6 @@ version: "1.1"
 agent:
   name: "expert"
   runtime: "python:3.10-slim"
-  autopull: true
   task:
     instruction: |
       You are an expert in [domain].
@@ -347,7 +345,6 @@ version: "1.1"
 agent:
   name: "creator"
   runtime: "python:3.10-slim"
-  autopull: true
   task:
     instruction: |
       You are a [creative role].

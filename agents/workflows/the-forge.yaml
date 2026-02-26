@@ -1,4 +1,4 @@
-# the-forge.yaml — Constitutional Development Lifecycle (ADR-020)
+# the-forge.yaml — Constitutional Development Lifecycle
 #
 # Merged from aegis-examples and aegis-orchestrator reference implementations.
 #
@@ -102,7 +102,7 @@ metadata:
   name: "the-forge"
   version: "1.0.0"
   description: |-
-    Full constitutional development lifecycle (ADR-020, Forge Blueprint).
+    Full constitutional development lifecycle.
     RequirementsAI → ArchitectAI → [human gate] → TesterAI → [human gate] →
     CoderAI → automated tests → parallel audit (ReviewerAI + CriticAI + SecurityAI)
     → [human gate] → deploy → CuratorAI constitutional learning.
@@ -117,7 +117,6 @@ spec:
     review_threshold: 0.8
 
   # Shared ephemeral workspace — all agent and system states mount /workspace.
-  # Related: ADR-032 (Unified Storage via SeaweedFS)
   storage:
     workspace:
       storage_class: "ephemeral"
