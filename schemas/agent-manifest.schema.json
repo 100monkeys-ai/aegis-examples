@@ -388,7 +388,7 @@
         },
         "volumes": {
           "type": "array",
-          "description": "Storage volume mounts for the agent execution (ADR-032)",
+          "description": "Storage volume mounts for the agent execution",
           "items": {
             "type": "object",
             "required": ["name", "storage_class", "mount_point", "access_mode"],
