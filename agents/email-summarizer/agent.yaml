@@ -36,18 +36,17 @@ spec:
     memory: true  # Enable persistent memory (Cortex)
     
     validation:
-      semantic:
-        enabled: true
-        threshold: 0.85  # High confidence for email summaries
-        prompt: |
-          Verify the email summaries meet quality standards:
-          {criteria}
-          
+      - type: semantic
+        judge_agent: "summary-quality-judge"
+        criteria: |
+          Verify the email summaries meet quality standards.
           Check that:
           - All emails are summarized (none skipped)
           - Action items are clearly identified
           - Urgency levels are appropriate
           - Summary length is concise
+        min_score: 0.85
+        timeout_seconds: 90
   
   security:
     # Network access: Only allow connections to these domains.

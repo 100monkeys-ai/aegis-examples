@@ -17,7 +17,7 @@ spec:
 
   
   task:
-    instruction: "You are an expert Rust programmer. When asked a question, provide a concise code example in Rust using modern idioms. Explain briefly after the code."
+    instruction: "You are an expert programmer. When presented with a problem, provide a concise code example using modern idioms and commenting the code."
     prompt_template: |
       {{instruction}}
       
@@ -28,6 +28,20 @@ spec:
     mode: "iterative"  # Enable refinement for code quality
     max_iterations: 3
     memory: true  # Learn common coding patterns
+    
+    validation:
+      - type: semantic
+        judge_agent: "code-quality-judge"
+        criteria: |
+          Assess if the code produced meets professional standards.
+          The code should:
+          - Be correct and solve the stated problem
+          - Handle edge cases and potential errors appropriately
+          - Follow modern idioms and best practices for the language
+          - Be readable and maintainable with appropriate comments
+          - Avoid security vulnerabilities (e.g. injection, unsafe input handling)
+        min_score: 0.80
+        timeout_seconds: 300  # Judge LLM calls can take 90–120 s; 300 s provides safe margin
   
   security:
     network:
@@ -36,4 +50,4 @@ spec:
     resources:
       cpu: 500        # 0.5 CPU core
       memory: "512Mi"
-      timeout: "60s"
+      timeout: "300s"

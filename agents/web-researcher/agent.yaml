@@ -36,18 +36,16 @@ spec:
     memory: true  # Enable Cortex memory
     
     validation:
-      semantic:
-        enabled: true
-        threshold: 0.80  # 80% confidence required
-        prompt: |
+      - type: semantic
+        judge_agent: "research-quality-judge"
+        criteria: |
           Evaluate if the research report meets these criteria:
-          {criteria}
-          
-          The output should:
           - Be well-structured and readable
           - Include verifiable citations
           - Cover the topic comprehensively
           - Use credible sources
+        min_score: 0.80
+        timeout_seconds: 120
   
   security:
     # LLM routing is handled by the orchestrator — do not add api.openai.com here.

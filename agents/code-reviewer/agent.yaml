@@ -37,18 +37,17 @@ spec:
     memory: true  # Enable Cortex memory
     
     validation:
-      semantic:
-        enabled: true
-        threshold: 0.80
-        prompt: |
-          Assess if the code review meets professional standards:
-          {criteria}
-          
+      - type: semantic
+        judge_agent: "code-quality-judge"
+        criteria: |
+          Assess if the code review meets professional standards.
           The review should:
           - Address all critical aspects (security, performance, quality)
           - Provide specific, actionable feedback
           - Include both concerns and positive observations
           - Reference specific code sections
+        min_score: 0.80
+        timeout_seconds: 120
   
   security:
     # LLM routing is handled by the orchestrator — do not add api.openai.com here.

@@ -33,14 +33,17 @@ spec:
     memory: false       # No Cortex memory needed for a hello-world demo
 
     validation:
-      semantic:
-        enabled: true
-        threshold: 0.85
-        prompt: |
+      - type: exit_code
+        expected: 0
+      - type: semantic
+        judge_agent: "code-quality-judge"
+        criteria: |
           Assess whether the agent successfully completed the task:
           - A correct Python function was written to /workspace/solution.py
           - Tests were written to /workspace/test_solution.py
           - All tests passed without errors
+        min_score: 0.85
+        timeout_seconds: 60
 
   security:
     network:

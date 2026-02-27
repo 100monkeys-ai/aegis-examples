@@ -31,7 +31,7 @@ spec:
   runtime:
     language: python
     version: "3.11"
-    isolation: firecracker
+    isolation: inherit
   
   # Judge task definition
   task:
@@ -47,7 +47,17 @@ spec:
       - 0.2-0.3 (Poor): Major errors or crashes
       - 0.0-0.1 (Failed): Complete failure, no meaningful output
       
-      Return JSON: {"score": 0.0-1.0, "confidence": 0.0-1.0, "reasoning": "...", "suggestions": [...], "verdict": "pass|refine|fail"}
+      Return ONLY a single JSON object — no markdown fences, no surrounding text:
+      {
+        "score": <number 0.0–1.0>,
+        "confidence": <number 0.0–1.0>,
+        "reasoning": "<detailed explanation>",
+        "signals": [
+          { "category": "correctness",  "score": <0.0–1.0>, "message": "<one sentence>" },
+          { "category": "completeness", "score": <0.0–1.0>, "message": "<one sentence>" },
+          { "category": "quality",      "score": <0.0–1.0>, "message": "<one sentence>" }
+        ]
+      }
     
     prompt_template: |
       {{instruction}}
@@ -63,11 +73,10 @@ spec:
     max_iterations: 1
 
     validation:
-      output:
-        format: "json"
+      - type: json_schema
         schema:
           type: object
-          required: [score, confidence, reasoning, verdict]
+          required: [score, confidence, reasoning, signals]
           properties:
             score:
               type: number
@@ -83,15 +92,21 @@ spec:
               type: string
               minLength: 20
               description: "Detailed explanation of the score"
-            suggestions:
+            signals:
               type: array
+              description: "Per-dimension quality signals"
               items:
-                type: string
-              description: "Actionable improvement suggestions"
-            verdict:
-              type: string
-              enum: [pass, refine, fail]
-              description: "Final verdict (pass >= 0.7, refine < 0.7 and > 0.3, fail <= 0.3)"
+                type: object
+                required: [category, score, message]
+                properties:
+                  category:
+                    type: string
+                  score:
+                    type: number
+                    minimum: 0.0
+                    maximum: 1.0
+                  message:
+                    type: string
   
   # Security policy
   security:

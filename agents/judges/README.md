@@ -42,7 +42,7 @@ validation:
 
 ### 1. basic-judge.yaml
 
-**Role:** General-purpose code validation  
+**Role:** General-purpose code execution validation  
 **Scoring:** 0.0-1.0 gradient scale  
 **Max Iterations:** 1 (no refinement)  
 **Network:** Denied  
@@ -51,20 +51,22 @@ validation:
 **Input Context:**
 
 - `task` - Original task description
-- `code` - Generated code
-- `output` - Execution output
-- `exit_code` - Process exit code
-- `execution_time_ms` - Runtime duration
+- `output` - Agent's stdout/execution output
+- `criteria` - Evaluation criteria from the `ValidatorSpec`
+- `validation_context` - Always `"semantic_judge"`
 
-**Output Schema:**
+**Output Schema (`GradientResult`):**
 
 ```json
 {
   "score": 0.85,
   "confidence": 0.92,
   "reasoning": "Detailed explanation...",
-  "suggestions": ["Improvement 1", "Improvement 2"],
-  "verdict": "pass"
+  "signals": [
+    { "category": "correctness",  "score": 0.9, "message": "Output matches expected result" },
+    { "category": "completeness", "score": 0.8, "message": "All requirements met" },
+    { "category": "quality",      "score": 0.8, "message": "Code is well-structured" }
+  ]
 }
 ```
 
@@ -77,11 +79,51 @@ validation:
 - `0.2-0.3` - Poor, major errors
 - `0.0-0.1` - Failed, non-functional
 
-**Verdict Logic:**
+---
 
-- `pass` - Score >= 0.70 (transition to completion)
-- `refine` - 0.30 < Score < 0.70 (trigger refinement)
-- `fail` - Score <= 0.30 (terminal failure)
+### 2. code-quality-judge.yaml
+
+**Role:** Evaluates the quality of AI-generated code  
+**Scoring:** 0.0-1.0 gradient scale across five dimensions  
+**Max Iterations:** 1 (no refinement)  
+**Network:** Denied  
+**Filesystem:** Read-only
+
+**Input Context:**
+
+- `task` - Original user request given to the coder agent
+- `output` - The code produced by the coder agent
+- `criteria` - Evaluation criteria from the `ValidatorSpec`
+- `validation_context` - Always `"semantic_judge"`
+
+**Output Schema (`GradientResult`):**
+
+```json
+{
+  "score": 0.84,
+  "confidence": 0.90,
+  "reasoning": "The code correctly implements the core logic and handles most edge cases, but leaves user input unvalidated and contains an O(n²) sort inside the request loop.",
+  "signals": [
+    { "category": "correctness",     "score": 0.95, "message": "All required functionality is implemented and produces correct output." },
+    { "category": "security",        "score": 0.55, "message": "User-supplied query parameter is passed directly to the SQL query without sanitization." },
+    { "category": "maintainability", "score": 0.90, "message": "Code is well-structured with clear naming and inline documentation." },
+    { "category": "performance",     "score": 0.60, "message": "Bubble sort inside the request handler introduces O(n²) latency under load." },
+    { "category": "robustness",      "score": 0.85, "message": "Errors are caught and logged; network timeout edge case is unhandled." }
+  ]
+}
+```
+
+**Scoring Weights:**
+
+| Signal | Weight |
+| --- | --- |
+| `correctness` | 30% |
+| `security` | 25% |
+| `maintainability` | 20% |
+| `performance` | 15% |
+| `robustness` | 10% |
+
+**Used by:** `coder` agent via `spec.execution.validation[].judge_agent: "code-quality-judge"`
 
 ---
 
@@ -186,13 +228,25 @@ spec:
     - Efficiency
     - Security
     
-    Output JSON: {"score": 0.85, "reasoning": "..."}
+    Output JSON: {"score": 0.85, "confidence": 0.90, "reasoning": "...", "signals": [...]}
   
   validation:
-    type: json_schema
-    schema:
-      type: object
-      required: [score, reasoning]
+    - type: json_schema
+      schema:
+        type: object
+        required: [score, confidence, reasoning]
+        properties:
+          score:
+            type: number
+            minimum: 0.0
+            maximum: 1.0
+          confidence:
+            type: number
+            minimum: 0.0
+            maximum: 1.0
+          reasoning:
+            type: string
+            minLength: 10
 ```
 
 ### Step 2: Deploy Your Judge

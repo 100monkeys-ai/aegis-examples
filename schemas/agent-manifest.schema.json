@@ -215,109 +215,75 @@
               "default": false
             },
             "validation": {
-              "type": "object",
-              "description": "Multi-layer validation strategy",
-              "properties": {
-                "system": {
-                  "type": "object",
-                  "description": "System-level checks (exit codes, stderr tolerance)",
-                  "properties": {
-                    "must_succeed": {
-                      "type": "boolean",
-                      "description": "Require exit code 0",
-                      "default": true
+              "type": "array",
+              "description": "Ordered list of validation steps executed after each iteration (Vec<ValidatorSpec>). Steps run in declaration order; the first failing step triggers the refinement loop.",
+              "items": {
+                "oneOf": [
+                  {
+                    "type": "object",
+                    "description": "Passes when the agent's last exit code matches `expected` (default 0).",
+                    "required": ["type"],
+                    "properties": {
+                      "type": { "type": "string", "enum": ["exit_code"] },
+                      "expected": { "type": "integer", "default": 0 },
+                      "min_score": { "type": "number", "minimum": 0.0, "maximum": 1.0, "default": 1.0 }
                     },
-                    "allow_stderr": {
-                      "type": "boolean",
-                      "description": "Allow stderr output",
-                      "default": false
+                    "additionalProperties": false
+                  },
+                  {
+                    "type": "object",
+                    "description": "Validates the agent's stdout against a JSON Schema document.",
+                    "required": ["type", "schema"],
+                    "properties": {
+                      "type": { "type": "string", "enum": ["json_schema"] },
+                      "schema": { "type": "object", "description": "JSON Schema to validate output against" },
+                      "min_score": { "type": "number", "minimum": 0.0, "maximum": 1.0, "default": 1.0 }
                     },
-                    "timeout_seconds": {
-                      "type": "integer",
-                      "description": "Per-iteration timeout",
-                      "minimum": 1,
-                      "default": 300
-                    }
+                    "additionalProperties": false
+                  },
+                  {
+                    "type": "object",
+                    "description": "Validates the agent's output with a regular expression.",
+                    "required": ["type", "pattern"],
+                    "properties": {
+                      "type": { "type": "string", "enum": ["regex"] },
+                      "pattern": { "type": "string", "description": "Regular expression to match against output" },
+                      "target": { "type": "string", "enum": ["stdout", "stderr"], "default": "stdout" },
+                      "min_score": { "type": "number", "minimum": 0.0, "maximum": 1.0, "default": 1.0 }
+                    },
+                    "additionalProperties": false
+                  },
+                  {
+                    "type": "object",
+                    "description": "Spawns a judge agent as a child execution to semantically evaluate output (ADR-016, ADR-017).",
+                    "required": ["type", "judge_agent", "criteria"],
+                    "properties": {
+                      "type": { "type": "string", "enum": ["semantic"] },
+                      "judge_agent": { "type": "string", "description": "Name of the deployed judge agent to spawn" },
+                      "criteria": { "type": "string", "description": "Human-readable evaluation criteria passed to the judge" },
+                      "min_score": { "type": "number", "minimum": 0.0, "maximum": 1.0, "default": 0.7 },
+                      "min_confidence": { "type": "number", "minimum": 0.0, "maximum": 1.0, "default": 0.0 },
+                      "timeout_seconds": { "type": "integer", "minimum": 1, "default": 300 }
+                    },
+                    "additionalProperties": false
+                  },
+                  {
+                    "type": "object",
+                    "description": "Spawns multiple judge agents in parallel and aggregates their verdicts (ADR-016, ADR-017).",
+                    "required": ["type", "judges", "criteria"],
+                    "properties": {
+                      "type": { "type": "string", "enum": ["multi_judge"] },
+                      "judges": { "type": "array", "items": { "type": "string" }, "minItems": 1, "description": "Names of deployed judge agents to spawn" },
+                      "consensus": { "type": "string", "enum": ["weighted_average", "majority_vote", "unanimous"], "default": "weighted_average" },
+                      "min_judges_required": { "type": "integer", "minimum": 1, "default": 1 },
+                      "criteria": { "type": "string", "description": "Human-readable evaluation criteria passed to each judge" },
+                      "min_score": { "type": "number", "minimum": 0.0, "maximum": 1.0, "default": 0.7 },
+                      "min_confidence": { "type": "number", "minimum": 0.0, "maximum": 1.0, "default": 0.0 },
+                      "timeout_seconds": { "type": "integer", "minimum": 1, "default": 300 }
+                    },
+                    "additionalProperties": false
                   }
-                },
-                "output": {
-                  "type": "object",
-                  "description": "Output format validation (JSON Schema)",
-                  "properties": {
-                    "format": {
-                      "type": "string",
-                      "description": "Expected output format",
-                      "enum": ["json", "yaml", "text", "csv", "pdf"]
-                    },
-                    "schema": {
-                      "type": "object",
-                      "description": "JSON Schema for output validation"
-                    },
-                    "regex": {
-                      "type": "string",
-                      "description": "Regex pattern for text output validation"
-                    }
-                  }
-                },
-                "script": {
-                  "type": "object",
-                  "description": "Custom validation script",
-                  "properties": {
-                    "path": {
-                      "type": "string",
-                      "description": "Path to validation script"
-                    },
-                    "description": {
-                      "type": "string",
-                      "description": "What the script validates"
-                    },
-                    "timeout_seconds": {
-                      "type": "integer",
-                      "description": "Script execution timeout",
-                      "minimum": 1,
-                      "default": 30
-                    }
-                  }
-                },
-                "semantic": {
-                  "type": "object",
-                  "description": "LLM-based semantic validation (Agent-as-Judge)",
-                  "properties": {
-                    "enabled": {
-                      "type": "boolean",
-                      "description": "Enable semantic validation. Defaults to true when task.instruction is present.",
-                      "default": true
-                    },
-                    "model": {
-                      "type": "string",
-                      "description": "Model alias for judge agent",
-                      "default": "default"
-                    },
-                    "prompt": {
-                      "type": "string",
-                      "description": "Judge prompt template (use {criteria}, {output}, {exit_code}, {stderr})"
-                    },
-                    "threshold": {
-                      "type": "number",
-                      "description": "Minimum confidence required (0.0-1.0)",
-                      "minimum": 0.0,
-                      "maximum": 1.0,
-                      "default": 0.8
-                    },
-                    "timeout_seconds": {
-                      "type": "integer",
-                      "description": "LLM call timeout",
-                      "minimum": 1,
-                      "default": 30
-                    },
-                    "fallback_on_unavailable": {
-                      "type": "string",
-                      "description": "Behavior when LLM unavailable",
-                      "enum": ["skip", "fail"],
-                      "default": "skip"
-                    }
-                  }
-                }
+                ]
               }
             }
           }

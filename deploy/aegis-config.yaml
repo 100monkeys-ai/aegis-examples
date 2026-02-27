@@ -100,6 +100,10 @@ spec:
     # nfs_server_host: "env:AEGIS_NFS_HOST"  # Required for Docker deployments with volumes
     # nfs_port: 2049
     # nfs_mountport: 2049
+    # Path to the StandardRuntime registry YAML.
+    # Maps language+version to deterministic Docker images (e.g., python 3.11 → python:3.11-slim).
+    # Default: "runtime-registry.yaml" (relative to daemon working directory)
+    runtime_registry_path: "runtime-registry.yaml"
 
   storage:
     backend: "seaweedfs"
