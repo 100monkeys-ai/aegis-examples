@@ -139,6 +139,8 @@ services:
       # - AEGIS_NFS_HOST=${AEGIS_NFS_HOST}
       # Keep agent container after execution (for debugging)
       - AEGIS_KEEP_CONTAINER=${AEGIS_KEEP_CONTAINER:-false}
+      # LLM provider API keys (referenced by spec.llm_providers[*].api_key)
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
     ports:
       - "8088:8088"   # AEGIS HTTP API
       - "50051:50051" # gRPC for worker activities

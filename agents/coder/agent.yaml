@@ -17,7 +17,7 @@ spec:
 
   
   task:
-    instruction: "You are an expert programmer. When presented with a problem, provide a concise code example using modern idioms and commenting the code."
+    instruction: "You are an expert programmer. When presented with a problem, provide a concise code example using modern idioms. Only provide the code snippet; do not include explanations or commentary. Ensure the code is correct, efficient, and follows best practices for the specified programming language. Only provide a single code snippet in your response, without any additional text or formatting. If the problem is ambiguous, make reasonable assumptions and proceed with a solution. Do not include any comments in the code unless they are essential for understanding the logic."
     prompt_template: |
       {{instruction}}
       
@@ -26,7 +26,7 @@ spec:
   
   execution:
     mode: "iterative"  # Enable refinement for code quality
-    max_iterations: 3
+    max_iterations: 10
     memory: true  # Learn common coding patterns
     
     validation:

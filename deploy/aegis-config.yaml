@@ -55,7 +55,34 @@ spec:
           capabilities: ["code", "reasoning"]
           context_window: 4096
           cost_per_1k_tokens: 0.0
-    # Uncomment to add a cloud provider:
+    - name: "anthropic"
+      type: "anthropic"
+      endpoint: "https://api.anthropic.com/v1"
+      api_key: "env:ANTHROPIC_API_KEY"
+      enabled: true
+      models:
+        - alias: "default"
+          model: "claude-haiku-4-5"
+          capabilities: ["code", "reasoning"]
+          context_window: 200000
+          cost_per_1k_tokens: 0.0008
+        - alias: "smart"
+          model: "claude-haiku-4-5"
+          capabilities: ["code", "reasoning"]
+          context_window: 200000
+          cost_per_1k_tokens: 0.0008
+        - alias: "fast"
+          model: "claude-haiku-4-5"
+          capabilities: ["code"]
+          context_window: 200000
+          cost_per_1k_tokens: 0.0008
+        - alias: "cheap"
+          model: "claude-haiku-4-5"
+          capabilities: ["code"]
+          context_window: 200000
+          cost_per_1k_tokens: 0.0008
+
+    # Uncomment to add an OpenAI provider:
     # - name: "openai"
     #   type: "openai"
     #   endpoint: "https://api.openai.com/v1"
@@ -74,8 +101,8 @@ spec:
     #       cost_per_1k_tokens: 0.00015
 
   llm_selection:
-    strategy: "prefer-local"
-    default_provider: "local"
+    strategy: "prefer-cloud"
+    default_provider: "anthropic"
     max_retries: 3
     retry_delay_ms: 1000
 
