@@ -40,7 +40,7 @@ spec:
           - Follow modern idioms and best practices for the language
           - Be readable and maintainable with appropriate comments
           - Avoid security vulnerabilities (e.g. injection, unsafe input handling)
-        min_score: 0.80
+        min_score: 0.85
         timeout_seconds: 300  # Judge LLM calls can take 90–120 s; 300 s provides safe margin
   
   security:
