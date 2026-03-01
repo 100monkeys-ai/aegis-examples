@@ -158,14 +158,14 @@
             "type": "object",
             "required": [
                 "volume",
-                "mount_point",
+                "mount_path",
                 "access_mode"
             ],
             "properties": {
                 "volume": {
                     "type": "string"
                 },
-                "mount_point": {
+                "mount_path": {
                     "type": "string"
                 },
                 "access_mode": {

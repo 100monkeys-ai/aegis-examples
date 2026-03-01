@@ -121,7 +121,7 @@ spec:
     workspace:
       storage_class: "ephemeral"
       ttl_hours: 6
-      size_limit_mb: 2000
+      size_limit: "2Gi"
 
   initial_state: REQUIREMENTS
 
@@ -138,7 +138,7 @@ spec:
       isolation: docker
       volumes:
         - volume: "{{workflow.storage.workspace}}"
-          mount_point: "/workspace"
+          mount_path: "/workspace"
           access_mode: "read-write"
       input: |-
         # Development Task
@@ -177,7 +177,7 @@ spec:
       isolation: docker
       volumes:
         - volume: "{{workflow.storage.workspace}}"
-          mount_point: "/workspace"
+          mount_path: "/workspace"
           access_mode: "read-write"
       input: |-
         # Requirements Specification
@@ -248,7 +248,7 @@ spec:
       isolation: docker
       volumes:
         - volume: "{{workflow.storage.workspace}}"
-          mount_point: "/workspace"
+          mount_path: "/workspace"
           access_mode: "read-write"
       input: |-
         # Requirements
@@ -328,7 +328,7 @@ spec:
       isolation: docker
       volumes:
         - volume: "{{workflow.storage.workspace}}"
-          mount_point: "/workspace"
+          mount_path: "/workspace"
           access_mode: "read-write"
       input: |-
         # Requirements
@@ -584,7 +584,7 @@ spec:
       isolation: docker
       volumes:
         - volume: "{{workflow.storage.workspace}}"
-          mount_point: "/workspace"
+          mount_path: "/workspace"
           access_mode: "read-only"
       input: |-
         # Constitutional Learning — Post-Deployment Analysis

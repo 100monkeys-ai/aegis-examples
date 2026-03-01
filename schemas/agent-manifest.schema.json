@@ -357,7 +357,7 @@
           "description": "Storage volume mounts for the agent execution",
           "items": {
             "type": "object",
-            "required": ["name", "storage_class", "mount_point", "access_mode"],
+            "required": ["name", "storage_class", "mount_path", "access_mode"],
             "properties": {
               "name": {
                 "type": "string",
@@ -368,7 +368,7 @@
                 "description": "Storage duration class",
                 "enum": ["ephemeral", "persistent"]
               },
-              "mount_point": {
+              "mount_path": {
                 "type": "string",
                 "description": "Absolute path inside the container where the volume is mounted"
               },
@@ -382,12 +382,9 @@
                 "description": "Time-To-Live in hours; required for ephemeral volumes",
                 "minimum": 1
               },
-              "size_limit_mb": {
-                "type": "integer",
-                "description": "Maximum size in megabytes; required for ephemeral volumes",
-                "minimum": 1,
-                "maximum": 10000,
-                "default": 1000
+              "size_limit": {
+                "type": "string",
+                "description": "Maximum volume size as a Kubernetes resource string (e.g., \"500Mi\", \"5Gi\")"
               },
               "source": {
                 "type": "object",
