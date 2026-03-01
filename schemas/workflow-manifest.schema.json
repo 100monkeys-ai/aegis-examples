@@ -1,0 +1,602 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "title": "AEGIS Workflow Manifest",
+    "description": "Schema for workflow.yaml configuration files (K8s-style format)",
+    "type": "object",
+    "required": [
+        "apiVersion",
+        "kind",
+        "metadata",
+        "spec"
+    ],
+    "properties": {
+        "apiVersion": {
+            "type": "string",
+            "description": "API version following Kubernetes convention",
+            "enum": [
+                "100monkeys.ai/v1"
+            ]
+        },
+        "kind": {
+            "type": "string",
+            "description": "Resource kind",
+            "enum": [
+                "Workflow"
+            ]
+        },
+        "metadata": {
+            "type": "object",
+            "required": [
+                "name"
+            ],
+            "properties": {
+                "name": {
+                    "type": "string",
+                    "description": "Unique workflow name (DNS label format)",
+                    "pattern": "^[a-z0-9]([-a-z0-9]*[a-z0-9])?$",
+                    "maxLength": 63
+                },
+                "version": {
+                    "type": "string",
+                    "description": "Manifest schema version (semantic versioning)",
+                    "pattern": "^(0|[1-9]\\d*)\\.(0|[1-9]\\d*)\\.(0|[1-9]\\d*)(?:-[a-zA-Z0-9-]+(?:\\.[a-zA-Z0-9-]+)*)?(?:\\+[a-zA-Z0-9-]+(?:\\.[a-zA-Z0-9-]+)*)?$"
+                },
+                "description": {
+                    "type": "string",
+                    "description": "Human-readable description"
+                },
+                "labels": {
+                    "type": "object",
+                    "description": "Key-value labels for categorization",
+                    "additionalProperties": {
+                        "type": "string",
+                        "maxLength": 63,
+                        "pattern": "^[a-zA-Z0-9_.-]+$"
+                    }
+                },
+                "annotations": {
+                    "type": "object",
+                    "description": "Arbitrary annotations (non-identifying metadata)",
+                    "additionalProperties": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "spec": {
+            "type": "object",
+            "required": [
+                "initial_state",
+                "states"
+            ],
+            "properties": {
+                "initial_state": {
+                    "type": "string",
+                    "description": "Name of the initial state"
+                },
+                "context": {
+                    "type": "object",
+                    "description": "Global context available to all states",
+                    "additionalProperties": true
+                },
+                "storage": {
+                    "type": "object",
+                    "description": "Workflow-level storage configuration",
+                    "properties": {
+                        "workspace": {
+                            "$ref": "#/definitions/StorageDefinition"
+                        },
+                        "shared_volumes": {
+                            "type": "array",
+                            "items": {
+                                "allOf": [
+                                    {
+                                        "$ref": "#/definitions/StorageDefinition"
+                                    },
+                                    {
+                                        "type": "object",
+                                        "required": [
+                                            "name"
+                                        ],
+                                        "properties": {
+                                            "name": {
+                                                "type": "string",
+                                                "description": "Unique identifier for the shared volume"
+                                            }
+                                        }
+                                    }
+                                ]
+                            }
+                        }
+                    }
+                },
+                "states": {
+                    "type": "object",
+                    "description": "State machine definition",
+                    "minProperties": 1,
+                    "patternProperties": {
+                        "^[a-zA-Z0-9_]+$": {
+                            "$ref": "#/definitions/State"
+                        }
+                    },
+                    "additionalProperties": false
+                }
+            }
+        }
+    },
+    "definitions": {
+        "StorageDefinition": {
+            "type": "object",
+            "required": [
+                "storage_class"
+            ],
+            "properties": {
+                "storage_class": {
+                    "type": "string",
+                    "enum": [
+                        "ephemeral",
+                        "persistent"
+                    ]
+                },
+                "ttl_hours": {
+                    "type": "integer",
+                    "description": "Time-To-Live for auto-deletion (ephemeral only)",
+                    "minimum": 1
+                },
+                "size_limit_mb": {
+                    "type": "integer",
+                    "description": "Maximum size in megabytes",
+                    "minimum": 1
+                },
+                "volume_id": {
+                    "type": "string",
+                    "description": "Pre-created volume UUID (persistent only)"
+                }
+            }
+        },
+        "VolumeMount": {
+            "type": "object",
+            "required": [
+                "volume",
+                "mount_point",
+                "access_mode"
+            ],
+            "properties": {
+                "volume": {
+                    "type": "string"
+                },
+                "mount_point": {
+                    "type": "string"
+                },
+                "access_mode": {
+                    "type": "string",
+                    "enum": [
+                        "read-only",
+                        "read-write"
+                    ]
+                }
+            }
+        },
+        "Transition": {
+            "type": "object",
+            "required": [
+                "condition",
+                "target"
+            ],
+            "properties": {
+                "condition": {
+                    "type": "string",
+                    "enum": [
+                        "always",
+                        "on_success",
+                        "on_failure",
+                        "exit_code_zero",
+                        "exit_code_non_zero",
+                        "exit_code",
+                        "score_above",
+                        "score_below",
+                        "score_between",
+                        "confidence_above",
+                        "consensus",
+                        "all_approved",
+                        "any_rejected",
+                        "input_equals",
+                        "input_equals_yes",
+                        "input_equals_no",
+                        "custom"
+                    ]
+                },
+                "target": {
+                    "type": "string"
+                },
+                "feedback": {
+                    "type": "string"
+                },
+                "value": {},
+                "threshold": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 1
+                },
+                "min": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 1
+                },
+                "max": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 1
+                },
+                "agreement": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 1
+                },
+                "expression": {
+                    "type": "string"
+                }
+            },
+            "allOf": [
+                {
+                    "if": {
+                        "properties": {
+                            "condition": {
+                                "const": "exit_code"
+                            }
+                        }
+                    },
+                    "then": {
+                        "required": [
+                            "value"
+                        ]
+                    }
+                },
+                {
+                    "if": {
+                        "properties": {
+                            "condition": {
+                                "enum": [
+                                    "score_above",
+                                    "score_below",
+                                    "confidence_above"
+                                ]
+                            }
+                        }
+                    },
+                    "then": {
+                        "required": [
+                            "threshold"
+                        ]
+                    }
+                },
+                {
+                    "if": {
+                        "properties": {
+                            "condition": {
+                                "const": "score_between"
+                            }
+                        }
+                    },
+                    "then": {
+                        "required": [
+                            "min",
+                            "max"
+                        ]
+                    }
+                },
+                {
+                    "if": {
+                        "properties": {
+                            "condition": {
+                                "const": "input_equals"
+                            }
+                        }
+                    },
+                    "then": {
+                        "required": [
+                            "value"
+                        ]
+                    }
+                },
+                {
+                    "if": {
+                        "properties": {
+                            "condition": {
+                                "const": "custom"
+                            }
+                        }
+                    },
+                    "then": {
+                        "required": [
+                            "expression"
+                        ]
+                    }
+                },
+                {
+                    "if": {
+                        "properties": {
+                            "condition": {
+                                "const": "consensus"
+                            }
+                        }
+                    },
+                    "then": {
+                        "required": [
+                            "threshold",
+                            "agreement"
+                        ]
+                    }
+                }
+            ]
+        },
+        "AgentState": {
+            "type": "object",
+            "required": [
+                "kind",
+                "agent",
+                "input",
+                "transitions"
+            ],
+            "properties": {
+                "kind": {
+                    "type": "string",
+                    "enum": [
+                        "Agent"
+                    ]
+                },
+                "agent": {
+                    "type": "string"
+                },
+                "input": {
+                    "type": "string"
+                },
+                "isolation": {
+                    "type": "string",
+                    "enum": [
+                        "inherit",
+                        "firecracker",
+                        "docker",
+                        "process"
+                    ]
+                },
+                "timeout": {
+                    "type": "string",
+                    "pattern": "^\\d+s$"
+                },
+                "volumes": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/VolumeMount"
+                    }
+                },
+                "transitions": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/Transition"
+                    }
+                }
+            }
+        },
+        "SystemState": {
+            "type": "object",
+            "required": [
+                "kind",
+                "command",
+                "transitions"
+            ],
+            "properties": {
+                "kind": {
+                    "type": "string",
+                    "enum": [
+                        "System"
+                    ]
+                },
+                "command": {
+                    "type": "string"
+                },
+                "env": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "string"
+                    }
+                },
+                "workdir": {
+                    "type": "string"
+                },
+                "timeout": {
+                    "type": "string",
+                    "pattern": "^\\d+s$"
+                },
+                "transitions": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/Transition"
+                    }
+                }
+            }
+        },
+        "HumanState": {
+            "type": "object",
+            "required": [
+                "kind",
+                "prompt",
+                "transitions"
+            ],
+            "properties": {
+                "kind": {
+                    "type": "string",
+                    "enum": [
+                        "Human"
+                    ]
+                },
+                "prompt": {
+                    "type": "string"
+                },
+                "timeout": {
+                    "type": "string",
+                    "pattern": "^\\d+s$"
+                },
+                "default_response": {
+                    "type": "string"
+                },
+                "transitions": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/Transition"
+                    }
+                }
+            }
+        },
+        "ParallelAgentsAgentConfig": {
+            "type": "object",
+            "required": [
+                "agent",
+                "input"
+            ],
+            "properties": {
+                "agent": {
+                    "type": "string"
+                },
+                "input": {
+                    "type": "string"
+                },
+                "weight": {
+                    "type": "number",
+                    "default": 1.0
+                },
+                "timeout_seconds": {
+                    "type": "integer",
+                    "default": 60
+                },
+                "poll_interval_ms": {
+                    "type": "integer",
+                    "default": 500
+                }
+            }
+        },
+        "ConsensusConfig": {
+            "type": "object",
+            "required": [
+                "strategy"
+            ],
+            "properties": {
+                "strategy": {
+                    "type": "string",
+                    "enum": [
+                        "weighted_average",
+                        "majority",
+                        "unanimous",
+                        "best_of_n"
+                    ]
+                },
+                "threshold": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 1,
+                    "default": 0.7
+                },
+                "min_agreement_confidence": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 1
+                },
+                "n": {
+                    "type": "integer",
+                    "minimum": 1
+                },
+                "min_judges_required": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "default": 1
+                },
+                "confidence_weighting": {
+                    "type": "object",
+                    "properties": {
+                        "agreement_factor": {
+                            "type": "number",
+                            "minimum": 0,
+                            "maximum": 1,
+                            "default": 0.7
+                        },
+                        "self_confidence_factor": {
+                            "type": "number",
+                            "minimum": 0,
+                            "maximum": 1,
+                            "default": 0.3
+                        }
+                    }
+                }
+            },
+            "allOf": [
+                {
+                    "if": {
+                        "properties": {
+                            "strategy": {
+                                "const": "best_of_n"
+                            }
+                        }
+                    },
+                    "then": {
+                        "required": [
+                            "n"
+                        ]
+                    }
+                }
+            ]
+        },
+        "ParallelAgentsState": {
+            "type": "object",
+            "required": [
+                "kind",
+                "agents",
+                "consensus",
+                "transitions"
+            ],
+            "properties": {
+                "kind": {
+                    "type": "string",
+                    "enum": [
+                        "ParallelAgents"
+                    ]
+                },
+                "agents": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/ParallelAgentsAgentConfig"
+                    },
+                    "minItems": 1
+                },
+                "consensus": {
+                    "$ref": "#/definitions/ConsensusConfig"
+                },
+                "timeout": {
+                    "type": "string",
+                    "pattern": "^\\d+s$"
+                },
+                "transitions": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/Transition"
+                    }
+                }
+            }
+        },
+        "State": {
+            "oneOf": [
+                {
+                    "$ref": "#/definitions/AgentState"
+                },
+                {
+                    "$ref": "#/definitions/SystemState"
+                },
+                {
+                    "$ref": "#/definitions/HumanState"
+                },
+                {
+                    "$ref": "#/definitions/ParallelAgentsState"
+                }
+            ]
+        }
+    }
+}
