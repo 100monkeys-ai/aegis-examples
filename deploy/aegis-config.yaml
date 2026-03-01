@@ -81,6 +81,36 @@ spec:
           capabilities: ["code"]
           context_window: 200000
           cost_per_1k_tokens: 0.0008
+        - alias: "judge"
+          model: "claude-haiku-4-5"
+          capabilities: ["code"]
+          context_window: 200000
+          cost_per_1k_tokens: 0.0008
+    - name: "lmstudio"
+      type: "openai-compatible"
+      endpoint: "http://10.10.0.117:1234/v1" # Replace 10.10.0.117 with your host/LMStudio IP address
+      enabled: true
+      models:
+        - alias: "default"
+          model: "google/gemma-3-4b"
+          capabilities: ["code", "reasoning"]
+          context_window: 8192
+          cost_per_1k_tokens: 0.0
+        - alias: "smart"
+          model: "google/gemma-3-4b"
+          capabilities: ["code", "reasoning"]
+          context_window: 8192
+          cost_per_1k_tokens: 0.0
+        - alias: "fast"
+          model: "google/gemma-3-4b"
+          capabilities: ["code"]
+          context_window: 8192
+          cost_per_1k_tokens: 0.0
+        - alias: "cheap"
+          model: "google/gemma-3-4b"
+          capabilities: ["code"]
+          context_window: 8192
+          cost_per_1k_tokens: 0.0
 
     # Uncomment to add an OpenAI provider:
     # - name: "openai"
@@ -101,8 +131,8 @@ spec:
     #       cost_per_1k_tokens: 0.00015
 
   llm_selection:
-    strategy: "prefer-cloud"
-    default_provider: "anthropic"
+    strategy: "prefer-local"
+    default_provider: "ollama"
     max_retries: 3
     retry_delay_ms: 1000
 

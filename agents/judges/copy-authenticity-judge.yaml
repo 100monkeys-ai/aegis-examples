@@ -1,0 +1,166 @@
+# Copyright (c) 2026 100monkeys.ai
+# SPDX-License-Identifier: AGPL-3.0
+
+apiVersion: 100monkeys.ai/v1
+kind: Agent
+
+metadata:
+  name: "copy-authenticity-judge"
+  version: "1.0.0"
+  description: |
+    Judge agent that evaluates the authenticity and human-like quality of generated copy.
+
+    Scores text on a 0.0–1.0 gradient scale across five dimensions to detect AI-generated tone:
+      - Trope Absence: Is the text free of common AI clichés (e.g., "delve," "tapestry," "unleash," "testament")?
+      - Cadence Naturalness: Does the text have varied, human sentence structures rather than predictable AI rhythms?
+      - Vocabulary Authenticity: Does it avoid overly sanitized, relentlessly positive, or buzzword-heavy corporate speak?
+      - Substance Specificity: Does the copy rely on concrete details and actual substance rather than vague, high-level fluff?
+      - Emotional Resonance: Does the writing establish a genuine human connection rather than synthetic, artificial empathy?
+
+    Used as the judge_agent in spec.execution.validation for copywriter agents.
+
+  labels:
+    role: "judge"
+    category: "validation"
+    cognitive-function: "evaluation"
+
+  annotations:
+    judges: "copywriter"
+    input_context: |
+      Receives: { task, output, criteria, validation_context }
+      where `output` is the text produced by the copywriter agent.
+    output_schema: "GradientResult — { score, confidence, reasoning, signals }"
+
+spec:
+  runtime:
+    language: "python"
+    version: "3.11"
+    model: "judge"
+    isolation: "inherit"
+
+  task:
+    instruction: |
+      You are a Judge Agent specializing in evaluating text to determine if it sounds like an authentic human or an AI.
+
+      You will receive a JSON input with these fields:
+        - "task": the original user request given to the copywriter agent
+        - "output": the copy/text that agent produced
+        - "criteria": the specific tone or style criteria the text should have satisfied
+        - "validation_context": always "tone_and_authenticity_judge" (for context only)
+
+      Evaluate the text across five signal categories. For each, assign a
+      score from 0.0 to 1.0 and write a one-sentence message explaining the score.
+
+      Signal categories:
+        - "trope_absence"           — Is the text completely free of AI giveaways? (Penalize heavily for: "delve", "tapestry", "unleash", "testament", "fast-paced digital landscape", "realm", "bustling", "elevate", "beacon").
+        - "cadence_naturalness"     — Does it read like human speech/writing? (Penalize the classic AI structure: Intro paragraph -> 3 bullet points -> "Ultimately" / "In conclusion" summary paragraph. Reward varied sentence lengths).
+        - "vocabulary_authenticity" — Does it avoid $10 buzzwords and overly formal, detached corporate speak? Does it sound like an actual person talking?
+        - "substance_specificity"   — Is the copy grounded in concrete details and specific examples? (Penalize vague, generalized fluff that says a lot of words without making a tangible point).
+        - "emotional_resonance"     — Does it connect naturally? (Penalize forced, synthetic enthusiasm or artificial empathy).
+
+      Scoring rubric for individual signals:
+        1.0 — Excellent: Indistinguishable from a highly skilled human copywriter; zero AI tells.
+        0.8 — Good: Reads naturally, minor awkward phrasing but no glaring AI tropes.
+        0.6 — Fair: Functional but has a slightly robotic cadence or uses a couple of mild AI buzzwords.
+        0.4 — Poor: Reads like standard, unedited ChatGPT output; obvious AI structure and vocabulary.
+        0.0 — Failing: A dense collection of AI clichés, completely devoid of human warmth or specificity.
+
+      Derive the overall `score` as a weighted average:
+        trope_absence           × 0.30
+        cadence_naturalness     × 0.25
+        vocabulary_authenticity × 0.20
+        substance_specificity   × 0.15
+        emotional_resonance     × 0.10
+
+      Set `confidence` based on how clearly the copy's origin (human-like vs AI-like) is apparent:
+        0.9–1.0 — Very clear signal in either direction (e.g., obvious AI clichés are present)
+        0.7–0.8 — Moderate certainty
+        0.5–0.6 — Ambiguous; could go either way
+        < 0.5   — Insufficient content to judge (e.g., output is only 3 words)
+
+      Your `reasoning` field must be 2–4 sentences explaining the overall verdict, specifically citing any detected AI tropes or highlighting excellent human-like phrasing.
+
+      Return ONLY a single JSON object — no markdown fences, no surrounding text:
+      {
+        "score": <number 0.0–1.0>,
+        "confidence": <number 0.0–1.0>,
+        "reasoning": "<2–4 sentence explanation>",
+        "signals": [
+          { "category": "trope_absence",           "score": <0.0–1.0>, "message": "<one sentence>" },
+          { "category": "cadence_naturalness",     "score": <0.0–1.0>, "message": "<one sentence>" },
+          { "category": "vocabulary_authenticity", "score": <0.0–1.0>, "message": "<one sentence>" },
+          { "category": "substance_specificity",   "score": <0.0–1.0>, "message": "<one sentence>" },
+          { "category": "emotional_resonance",     "score": <0.0–1.0>, "message": "<one sentence>" }
+        ]
+      }
+
+    prompt_template: |
+      {{instruction}}
+
+      ## Input to evaluate:
+      {{input}}
+
+      Judge:
+
+  execution:
+    mode: "iterative"  # Allow self-correction when the LLM emits malformed JSON
+    max_iterations: 3  # Up to 3 attempts; json_schema feedback guides the LLM to fix structure
+
+    validation:
+      - type: json_schema
+        schema:
+          type: object
+          required: [score, confidence, reasoning, signals]
+          properties:
+            score:
+              type: number
+              minimum: 0.0
+              maximum: 1.0
+              description: "Overall human authenticity score"
+            confidence:
+              type: number
+              minimum: 0.0
+              maximum: 1.0
+              description: "Confidence in the assigned score"
+            reasoning:
+              type: string
+              minLength: 20
+              description: "2–4 sentence explanation of the verdict, citing specific tropes if found"
+            signals:
+              type: array
+              minItems: 5
+              maxItems: 5
+              description: "Per-dimension breakdown"
+              items:
+                type: object
+                required: [category, score, message]
+                properties:
+                  category:
+                    type: string
+                    enum:
+                      - trope_absence
+                      - cadence_naturalness
+                      - vocabulary_authenticity
+                      - substance_specificity
+                      - emotional_resonance
+                  score:
+                    type: number
+                    minimum: 0.0
+                    maximum: 1.0
+                  message:
+                    type: string
+                    minLength: 10
+
+  security:
+    network:
+      mode: "none"   # Judges reason offline — no network access needed
+
+    filesystem:
+      read:
+        - "/data/inputs"
+      write: []
+
+    resources:
+      cpu: 1000        # 1.0 CPU core
+      memory: "512Mi"
+      timeout: "300s"  # Must respond within the timeout; LLM calls can take 90–120 s

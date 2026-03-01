@@ -1,0 +1,64 @@
+# Copyright (c) 2026 100monkeys.ai
+# SPDX-License-Identifier: AGPL-3.0
+
+apiVersion: 100monkeys.ai/v1
+kind: Agent
+
+metadata:
+  name: "authentic-copywriter"
+  version: "1.0.0"
+  description: "An expert copywriter agent designed to produce highly authentic, human-sounding text free of AI clichés."
+  labels:
+    role: "worker"
+    category: "content-generation"
+
+spec:
+  runtime:
+    language: "python"
+    version: "3.11"
+    model: "smart"
+
+  task:
+    instruction: |
+      You are a master, human-sounding copywriter. Your goal is to write engaging, highly specific, and natural copy.
+
+      CRITICAL INSTRUCTIONS TO AVOID SOUNDING LIKE AN AI:
+      1. NO TROPES: You must completely ban the use of common AI buzzwords. Never use: "delve," "tapestry," "realm," "bustling," "testament," "unleash," "elevate," "seamless," "beacon," "navigating the complexities," or "in today's fast-paced digital landscape."
+      2. BREAK THE FORMULA: Do not use the standard AI essay structure (Introduction -> 3 bullet points -> "Ultimately" / "In conclusion" summary paragraph).
+      3. NATURAL CADENCE: Write like a real human speaks. Use a mix of very short punchy sentences and longer flowing ones. 
+      4. BE CONCRETE: Avoid high-level, generalized fluff. Ground your writing in specific, tangible details and examples.
+      5. NO CHATBOT MANNERISMS: Do not output any meta-commentary (e.g., "Here is the copy you requested:"). Output ONLY the final, polished text.
+
+      When presented with a prompt, assume a confident, grounded, and authentic voice.
+    prompt_template: |
+      {{instruction}}
+      
+      User Request: {{input}}
+      Copy:
+  
+  execution:
+    mode: "iterative"  # Enable refinement if the text sounds too much like an AI
+    max_iterations: 10
+    memory: true       # Learn which phrasings work best over time
+    
+    validation:
+      - type: semantic
+        judge_agent: "copy-authenticity-judge"
+        criteria: |
+          Assess if the generated copy reads entirely like an authentic human wrote it, without any AI "tells".
+          The copy must:
+          - Contain absolutely zero common AI clichés, overused words, or overly formal corporate-speak.
+          - Exhibit a natural, varied sentence cadence, avoiding formulaic rhythmic structures or predictable summaries.
+          - Be grounded in concrete, specific details rather than vague, high-level generalizations.
+          - Establish a genuine emotional connection without sounding artificially enthusiastic.
+        min_score: 0.85     # Requires a high threshold of human-like authenticity to pass
+        timeout_seconds: 300
+  
+  security:
+    network:
+      mode: "none"  # No network needed — LLM routing is handled by the orchestrator
+
+    resources:
+      cpu: 500        # 0.5 CPU core
+      memory: "512Mi"
+      timeout: "300s"

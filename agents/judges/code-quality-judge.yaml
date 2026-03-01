@@ -35,6 +35,7 @@ spec:
   runtime:
     language: "python"
     version: "3.11"
+    model: "judge"
     isolation: "inherit"
 
   task:
