@@ -57,3 +57,4 @@ spec:
   tools:
     - "fs.write"
     - "fs.read"
+    - "cmd.run"

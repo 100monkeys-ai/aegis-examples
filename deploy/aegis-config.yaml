@@ -24,6 +24,24 @@ spec:
     # region: "us-west-2"  # Optional
     # tags: ["development"]  # Optional
 
+  builtin_dispatchers:
+    - name: "cmd.run"
+      enabled: true
+      description: "Executes a shell command inside the agent's ephemeral container environment."
+      capabilities: ["cmd.run"]
+    - name: "fs.read"
+      enabled: true
+      description: "Read the contents of a file at the given POSIX path."
+      capabilities: ["fs.read"]
+    - name: "fs.write"
+      enabled: true
+      description: "Write content to a file at the given POSIX path."
+      capabilities: ["fs.write"]
+    - name: "fs.list"
+      enabled: true
+      description: "List the contents of a directory."
+      capabilities: ["fs.list"]
+
   llm_providers:
     - name: "local"
       type: "ollama"
