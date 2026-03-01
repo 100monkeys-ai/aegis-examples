@@ -172,11 +172,8 @@ spec:
       default_size_limit_mb: 1000
       max_size_limit_mb: 10000
       gc_interval_minutes: 60
-    local:
-      base_path: "/var/lib/aegis/local-volumes"
-      default_ttl_hours: 24
-      default_size_limit_mb: 1000
-      max_size_limit_mb: 10000
+    local_host:
+      mount_point: "/tmp/aegis-volumes"
 
   network:
     # bind_address: "0.0.0.0"  # Optional (default: 0.0.0.0)

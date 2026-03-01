@@ -152,6 +152,7 @@ services:
       - ./aegis-config.yaml:/app/aegis-config.yaml
       - ./runtime-registry.yaml:/app/runtime-registry.yaml
       - aegis-runtime-data:/app/data
+      - ./local-volumes:/tmp/aegis-volumes
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8088/health"]
       interval: 10s

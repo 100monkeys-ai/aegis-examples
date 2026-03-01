@@ -18,16 +18,16 @@ spec:
   volumes:
     - name: workspace
       storage_class: ephemeral
-      mount_point: "/workspace"
+      mount_path: "/workspace"
       access_mode: "read-write"
-      size_limit_mb: 1024
+      size_limit: "1Gi"
       ttl_hours: 1
 
   task:
     instruction: |
       You are a filesystem test agent. Write the text "Hello from AEGIS!" to
-      /workspace/hello.txt, then read it back and print the contents to confirm
-      the ephemeral volume is mounted and working correctly.
+      /workspace/hello.txt to confirm the ephemeral volume is mounted and
+      working correctly.
 
     prompt_template: |
       {{instruction}}
