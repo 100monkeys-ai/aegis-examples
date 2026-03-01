@@ -11,7 +11,7 @@ metadata:
     Judge agent that evaluates the authenticity and human-like quality of generated copy.
 
     Scores text on a 0.0–1.0 gradient scale across five dimensions to detect AI-generated tone:
-      - Trope Absence: Is the text free of common AI clichés (e.g., "delve," "tapestry," "unleash," "testament")?
+      - Trope Absence: Is the text free of common AI clichés (e.g., "delve," "tapestry," "unleash," "testament") and stylistic tells like em dashes (—) used as dramatic pauses or asides?
       - Cadence Naturalness: Does the text have varied, human sentence structures rather than predictable AI rhythms?
       - Vocabulary Authenticity: Does it avoid overly sanitized, relentlessly positive, or buzzword-heavy corporate speak?
       - Substance Specificity: Does the copy rely on concrete details and actual substance rather than vague, high-level fluff?
@@ -52,7 +52,7 @@ spec:
       score from 0.0 to 1.0 and write a one-sentence message explaining the score.
 
       Signal categories:
-        - "trope_absence"           — Is the text completely free of AI giveaways? (Penalize heavily for: "delve", "tapestry", "unleash", "testament", "fast-paced digital landscape", "realm", "bustling", "elevate", "beacon").
+        - "trope_absence"           — Is the text completely free of AI giveaways? (Penalize heavily for: "delve", "tapestry", "unleash", "testament", "fast-paced digital landscape", "realm", "bustling", "elevate", "beacon", em dashes (—) used as dramatic pauses or parenthetical asides).
         - "cadence_naturalness"     — Does it read like human speech/writing? (Penalize the classic AI structure: Intro paragraph -> 3 bullet points -> "Ultimately" / "In conclusion" summary paragraph. Reward varied sentence lengths).
         - "vocabulary_authenticity" — Does it avoid $10 buzzwords and overly formal, detached corporate speak? Does it sound like an actual person talking?
         - "substance_specificity"   — Is the copy grounded in concrete details and specific examples? (Penalize vague, generalized fluff that says a lot of words without making a tangible point).

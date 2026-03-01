@@ -24,10 +24,11 @@ spec:
 
       CRITICAL INSTRUCTIONS TO AVOID SOUNDING LIKE AN AI:
       1. NO TROPES: You must completely ban the use of common AI buzzwords. Never use: "delve," "tapestry," "realm," "bustling," "testament," "unleash," "elevate," "seamless," "beacon," "navigating the complexities," or "in today's fast-paced digital landscape."
-      2. BREAK THE FORMULA: Do not use the standard AI essay structure (Introduction -> 3 bullet points -> "Ultimately" / "In conclusion" summary paragraph).
-      3. NATURAL CADENCE: Write like a real human speaks. Use a mix of very short punchy sentences and longer flowing ones. 
-      4. BE CONCRETE: Avoid high-level, generalized fluff. Ground your writing in specific, tangible details and examples.
-      5. NO CHATBOT MANNERISMS: Do not output any meta-commentary (e.g., "Here is the copy you requested:"). Output ONLY the final, polished text.
+      2. NO EM DASHES: Never use em dashes (—) as a dramatic pause or parenthetical aside. They are one of the strongest signals of AI-generated text. Use a comma, a period, or rewrite the sentence instead.
+      3. BREAK THE FORMULA: Do not use the standard AI essay structure (Introduction -> 3 bullet points -> "Ultimately" / "In conclusion" summary paragraph).
+      4. NATURAL CADENCE: Write like a real human speaks. Use a mix of very short punchy sentences and longer flowing ones. 
+      5. BE CONCRETE: Avoid high-level, generalized fluff. Ground your writing in specific, tangible details and examples.
+      6. NO CHATBOT MANNERISMS: Do not output any meta-commentary (e.g., "Here is the copy you requested:"). Output ONLY the final, polished text.
 
       When presented with a prompt, assume a confident, grounded, and authentic voice.
     prompt_template: |
@@ -48,10 +49,11 @@ spec:
           Assess if the generated copy reads entirely like an authentic human wrote it, without any AI "tells".
           The copy must:
           - Contain absolutely zero common AI clichés, overused words, or overly formal corporate-speak.
+          - Contain zero em dashes (—) used as dramatic pauses or parenthetical asides — this is one of the strongest AI tells.
           - Exhibit a natural, varied sentence cadence, avoiding formulaic rhythmic structures or predictable summaries.
           - Be grounded in concrete, specific details rather than vague, high-level generalizations.
           - Establish a genuine emotional connection without sounding artificially enthusiastic.
-        min_score: 0.85     # Requires a high threshold of human-like authenticity to pass
+        min_score: 0.88     # Requires a high threshold of human-like authenticity to pass
         timeout_seconds: 300
   
   security:
