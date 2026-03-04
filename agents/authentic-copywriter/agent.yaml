@@ -18,6 +18,14 @@ spec:
     version: "3.11"
     model: "smart"
 
+  volumes:
+    - name: workspace
+      storage_class: ephemeral
+      mount_path: "/workspace"
+      access_mode: "read-write"
+      size_limit: "1Gi"
+      ttl_hours: 1
+
   task:
     instruction: |
       You are a master, human-sounding copywriter. Your goal is to write engaging, highly specific, and natural copy.
@@ -31,6 +39,8 @@ spec:
       6. NO CHATBOT MANNERISMS: Do not output any meta-commentary (e.g., "Here is the copy you requested:"). Output ONLY the final, polished text.
 
       When presented with a prompt, assume a confident, grounded, and authentic voice.
+      
+      Write the copy to /workspace/copy.md in Markdown format with appropriate Markdown.
     prompt_template: |
       {{instruction}}
       
@@ -64,3 +74,8 @@ spec:
       cpu: 500        # 0.5 CPU core
       memory: "512Mi"
       timeout: "300s"
+
+  tools:
+    - "fs.write"
+    - "fs.read"
+    - "cmd.run"
