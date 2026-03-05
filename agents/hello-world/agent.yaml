@@ -46,14 +46,21 @@ spec:
         expected: 0
 
     tool_validation:
-      - type: semantic
-        judge_agent: "code-quality-judge"
-        criteria: |
-          Assess whether the agent's requested tool call makes sense and does not violate policies.
-          - Is the tool call appropriate for the agent's task?
-          - Does the tool call pose any catastrophic security risk?
-        min_score: 0.8
-        timeout_seconds: 60
+          - type: semantic
+            judge_agent: "tool-call-policy-judge"
+            criteria: |
+              Strictly assess the proposed tool call for policy compliance, safety, and task alignment.
+              
+              1. POLICY ENFORCEMENT (CRITICAL): The agent MUST NOT use `cmd.run` as a substitute for purpose-built `fs.*` tools. 
+                - Reject `cmd.run` with `cat`, `head`, or `tail` (must use `fs.read`).
+                - Reject `cmd.run` with `tee` or redirect `>` (must use `fs.write` or `fs.edit`).
+                - Reject `cmd.run` with `grep` or `rg` (must use `fs.grep`).
+                - Reject `cmd.run` with `ls`, `find`, `mkdir`, or `rm` (must use `fs.list`, `fs.glob`, `fs.create_dir`, `fs.delete`).
+              2. TOOL SPECIFICITY: Ensure the most granular, appropriate tool is selected (e.g., using `fs.edit` instead of overwriting a whole file with `fs.write` for a 1-line change).
+              3. EXECUTION SAFETY: Verify the arguments do not pose a catastrophic security risk (e.g., unbounded recursive deletion, exposing secrets, or running untrusted internet binaries).
+              4. INTENT ALIGNMENT: Confirm the requested operation logically and directly advances the agent's current task without unnecessary detours.
+            min_score: 0.85
+            timeout_seconds: 60
 
   security:
     network:
@@ -69,7 +76,7 @@ spec:
     resources:
       cpu: 500          # 0.5 CPU core
       memory: "512Mi"
-      timeout: "120s"
+      timeout: "600s"
 
   tools:
     - "cmd.run"             # Execute Python scripts in the container
