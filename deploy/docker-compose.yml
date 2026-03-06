@@ -350,16 +350,15 @@ services:
     volumes:
       - ../agents/workflows:/workflows:ro
     # Wait for temporal-worker HTTP port to accept connections before posting.
-    command: >
-      sh -c "
+    command:
+      - sh
+      - -ec
+      - |
         echo 'Waiting for temporal-worker HTTP API...' &&
         until curl -sf http://temporal-worker:3000/health > /dev/null; do sleep 2; done &&
         echo 'Registering The Forge workflow...' &&
-        curl -sf -X POST http://temporal-worker:3000/register-workflow
-          -H 'Content-Type: application/x-yaml'
-          --data-binary @/workflows/the-forge.yaml &&
+        curl -sf -X POST http://temporal-worker:3000/register-workflow -H 'Content-Type: application/x-yaml' --data-binary @/workflows/the-forge.yaml &&
         echo 'The Forge workflow registered successfully'
-      "
     networks:
       - aegis-network
     restart: "no"
