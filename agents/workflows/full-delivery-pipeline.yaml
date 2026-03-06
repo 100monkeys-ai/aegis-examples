@@ -1,0 +1,291 @@
+# full-delivery-pipeline.yaml — Agent-Augmented CI/CD Pipeline (ADR-050)
+#
+# Demonstrates the full range of workflow StateKind variants — Agent,
+# ContainerRun, ParallelContainerRun, ParallelAgents, Human, and System
+# — mixed in a single FSM. This is the canonical ADR-050 reference example.
+#
+# Pipeline:
+#   GENERATE_CODE  (Agent)               — coder-v2 writes a REST API endpoint
+#     └──on_success──► BUILD             (ContainerRun) — cargo build --release
+#     └──on_failure──► GENERATE_CODE     loop
+#   BUILD
+#     └──exit_code_zero──► TEST          (ParallelContainerRun) — tests + lint + fmt
+#     └──exit_code_non_zero──► FIX_BUILD_ERRORS (Agent)
+#   FIX_BUILD_ERRORS
+#     └──on_success──► BUILD             retry build after agent fix
+#     └──on_failure──► NOTIFY_FAILURE
+#   TEST
+#     └──on_success──► REVIEW            (ParallelAgents) — security + architecture
+#     └──on_failure──► FIX_TEST_ERRORS   (Agent)
+#   FIX_TEST_ERRORS
+#     └──on_success──► BUILD             rebuild after fix
+#     └──on_failure──► NOTIFY_FAILURE
+#   REVIEW
+#     └──score_above 0.8──► DEPLOY       (ContainerRun) — docker build + push
+#     └──score_below 0.8──► FIX_REVIEW_ISSUES (Agent)
+#   FIX_REVIEW_ISSUES
+#     └──on_success──► BUILD             rebuild after review fix
+#     └──on_failure──► NOTIFY_FAILURE
+#   DEPLOY
+#     └──exit_code_zero──► NOTIFY_SUCCESS
+#     └──exit_code_non_zero──► NOTIFY_FAILURE
+#
+# Required workflow inputs:
+#   requirements  — Natural language description of the feature to implement.
+#
+# Optional inputs:
+#   registry      — Container registry host (default: ghcr.io/myorg).
+#   app_name      — Application name for the image tag (default: my-app).
+#   version       — Image version tag (default: latest).
+#   docker_host   — Docker daemon address accessible from the container
+#                   (default: unix:///var/run/docker.sock).
+#
+# Required agents (deploy before starting):
+#   coder-v2, code-quality-judge, security-auditor, architecture-reviewer
+#
+# Required registry credentials (stored in OpenBao at cicd/docker-registry):
+#   Resolved via ADR-034 vault: prefix.  Set registry_credentials to
+#   "vault:cicd/docker-registry" and store username:password there.
+#
+# Usage:
+#   aegis workflow deploy ./agents/workflows/full-delivery-pipeline.yaml
+#   aegis workflow start full-delivery-pipeline --input '{
+#     "requirements": "Implement a REST API endpoint for user registration.",
+#     "registry": "ghcr.io/myorg",
+#     "app_name": "my-app",
+#     "version": "1.0.0"
+#   }'
+
+apiVersion: 100monkeys.ai/v1
+kind: Workflow
+
+metadata:
+  name: "full-delivery-pipeline"
+  version: "1.0.0"
+  description: |-
+    Agent-augmented CI/CD: generate → build → test → judge → deploy.
+    Mixes ContainerRun, ParallelContainerRun, Agent, and ParallelAgents
+    in a single workflow FSM (ADR-050 canonical example).
+  labels:
+    category: "example"
+    pattern: "cicd"
+    adr: "050"
+
+spec:
+  initial_state: GENERATE_CODE
+
+  # ── Workflow-level volumes shared across all states (ADR-036) ──────────────
+  volumes:
+    - name: workspace
+      persistent: true
+
+  states:
+
+    # ── 1. GENERATE_CODE (Agent) ────────────────────────────────────────────
+    # A coder agent generates the feature implementation into /workspace.
+    # Code quality judge validates the output via gradient scoring.
+    GENERATE_CODE:
+      kind: Agent
+      agent: coder-v2
+      input: |
+        Implement a REST API endpoint for user registration.
+        Requirements: {{blackboard.requirements}}
+
+        Write the implementation into /workspace and ensure it compiles.
+      judges:
+        - agent_id: code-quality-judge
+          weight: 1.0
+      max_iterations: 5
+      transitions:
+        - condition: on_success
+          target: BUILD
+        - condition: on_failure
+          target: GENERATE_CODE
+
+    # ── 2. BUILD (ContainerRun) ─────────────────────────────────────────────
+    # Deterministic cargo build — no LLM in the loop. Shares /workspace
+    # volume with the agent state above so the generated code is available.
+    # Retry once on transient image-pull failures.
+    BUILD:
+      kind: ContainerRun
+      name: "Compile and Build"
+      image: "rust:1.75-alpine"
+      command: ["cargo", "build", "--release"]
+      workdir: "/workspace"
+      volumes:
+        - name: workspace
+          mount_path: /workspace
+      resources:
+        cpu: 2000
+        memory: "4Gi"
+        timeout: "10m"
+      env:
+        CARGO_HOME: "/workspace/.cargo"
+        RUSTFLAGS: "-C target-feature=-crt-static"
+      retry:
+        max_attempts: 1
+        backoff: "5s"
+      transitions:
+        - condition: exit_code_zero
+          target: TEST
+        - condition: exit_code_non_zero
+          target: FIX_BUILD_ERRORS
+
+    # ── 3. FIX_BUILD_ERRORS (Agent) ─────────────────────────────────────────
+    # Coder agent reads build stderr from the blackboard and fixes compile errors.
+    FIX_BUILD_ERRORS:
+      kind: Agent
+      agent: coder-v2
+      input: |
+        The build failed with the following errors:
+        {{BUILD.output.stderr}}
+
+        Fix the compilation errors in /workspace.
+      judges:
+        - agent_id: code-quality-judge
+          weight: 1.0
+      max_iterations: 3
+      transitions:
+        - condition: on_success
+          target: BUILD
+        - condition: on_failure
+          target: NOTIFY_FAILURE
+
+    # ── 4. TEST (ParallelContainerRun) ───────────────────────────────────────
+    # Three container steps run concurrently: unit tests, clippy lint, rustfmt check.
+    # All three must succeed (all_succeed strategy) to proceed to review.
+    TEST:
+      kind: ParallelContainerRun
+      steps:
+        - name: unit-tests
+          image: "rust:1.75-alpine"
+          command: ["cargo", "test", "--workspace"]
+          workdir: "/workspace"
+          volumes:
+            - name: workspace
+              mount_path: /workspace
+          resources:
+            timeout: "5m"
+        - name: lint
+          image: "rust:1.75-alpine"
+          command: ["cargo", "clippy", "--all-targets", "--", "-D", "warnings"]
+          workdir: "/workspace"
+          volumes:
+            - name: workspace
+              mount_path: /workspace
+          resources:
+            timeout: "3m"
+        - name: format-check
+          image: "rust:1.75-alpine"
+          command: ["cargo", "fmt", "--check"]
+          workdir: "/workspace"
+          volumes:
+            - name: workspace
+              mount_path: /workspace
+          resources:
+            timeout: "2m"
+      completion: all_succeed
+      transitions:
+        - condition: on_success
+          target: REVIEW
+        - condition: on_failure
+          target: FIX_TEST_ERRORS
+
+    # ── 5. FIX_TEST_ERRORS (Agent) ───────────────────────────────────────────
+    # Coder agent reads individual parallel step outputs from the blackboard.
+    FIX_TEST_ERRORS:
+      kind: Agent
+      agent: coder-v2
+      input: |
+        Tests or linting failed. Results:
+        Unit tests: {{TEST.output.unit-tests}}
+        Lint:        {{TEST.output.lint}}
+        Format:      {{TEST.output.format-check}}
+
+        Fix the issues and ensure all checks pass.
+      max_iterations: 3
+      transitions:
+        - condition: on_success
+          target: BUILD
+        - condition: on_failure
+          target: NOTIFY_FAILURE
+
+    # ── 6. REVIEW (ParallelAgents) ───────────────────────────────────────────
+    # Security auditor and architecture reviewer run concurrently.
+    # Weighted average must exceed 0.8 to proceed to deployment.
+    REVIEW:
+      kind: ParallelAgents
+      agents:
+        - agent: security-auditor
+          input: "Audit the code in /workspace for security vulnerabilities."
+          weight: 1.0
+        - agent: architecture-reviewer
+          input: "Review the code architecture in /workspace for SOLID violations."
+          weight: 1.0
+      consensus:
+        strategy: weighted_average
+        threshold: 0.8
+      transitions:
+        - condition: score_above
+          threshold: 0.8
+          target: DEPLOY
+        - condition: score_below
+          threshold: 0.8
+          target: FIX_REVIEW_ISSUES
+
+    # ── 7. FIX_REVIEW_ISSUES (Agent) ────────────────────────────────────────
+    # Coder agent addresses security and architecture review feedback.
+    FIX_REVIEW_ISSUES:
+      kind: Agent
+      agent: coder-v2
+      input: |
+        Security and architecture review feedback:
+        {{REVIEW.output}}
+        Address all identified issues.
+      max_iterations: 3
+      transitions:
+        - condition: on_success
+          target: BUILD
+        - condition: on_failure
+          target: NOTIFY_FAILURE
+
+    # ── 8. DEPLOY (ContainerRun) ─────────────────────────────────────────────
+    # Uses shell mode to run a multi-command docker build + push script.
+    # Registry credentials resolved from OpenBao via vault: prefix (ADR-034).
+    # Blackboard values from workflow inputs are interpolated via Handlebars.
+    DEPLOY:
+      kind: ContainerRun
+      name: "Push to Registry"
+      image: "docker:24-cli"
+      command:
+        - sh
+        - -c
+        - |
+          docker build -t {{blackboard.registry}}/{{blackboard.app_name}}:{{blackboard.version}} /workspace
+          docker push {{blackboard.registry}}/{{blackboard.app_name}}:{{blackboard.version}}
+      shell: true
+      env:
+        DOCKER_HOST: "{{blackboard.docker_host}}"
+      volumes:
+        - name: workspace
+          mount_path: /workspace
+      registry_credentials: "vault:cicd/docker-registry"
+      resources:
+        timeout: "15m"
+      transitions:
+        - condition: exit_code_zero
+          target: NOTIFY_SUCCESS
+        - condition: exit_code_non_zero
+          target: NOTIFY_FAILURE
+
+    # ── 9. NOTIFY_SUCCESS (System) ───────────────────────────────────────────
+    NOTIFY_SUCCESS:
+      kind: System
+      command: "echo 'Pipeline completed successfully'"
+      transitions: []
+
+    # ── 10. NOTIFY_FAILURE (System) ──────────────────────────────────────────
+    NOTIFY_FAILURE:
+      kind: System
+      command: "echo 'Pipeline failed'"
+      transitions: []

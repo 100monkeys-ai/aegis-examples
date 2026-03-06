@@ -1,0 +1,116 @@
+# simple-container-run.yaml — Minimal ContainerRun Tutorial (ADR-050)
+#
+# A minimal example of ContainerRun and ParallelContainerRun workflow states.
+# Intended as the entry-level reference before reading full-delivery-pipeline.yaml.
+#
+# This workflow runs cargo tests inside an isolated Rust container, using a
+# workspace volume shared with a prior agent state. No LLM is invoked for
+# the test or lint steps — they are pure deterministic container executions.
+#
+# FSM:
+#   WRITE_CODE  (Agent)               — coder-v2 generates code into /workspace
+#     └──on_success──► CHECK          (ParallelContainerRun) — tests + lint
+#     └──on_failure──► FAIL
+#   CHECK
+#     └──on_success──► DONE
+#     └──on_failure──► FAIL
+#
+# Required workflow inputs:
+#   task  — Description of the code to write.
+#
+# Required agents (deploy before starting):
+#   coder-v2
+#
+# Usage:
+#   aegis workflow deploy ./agents/workflows/simple-container-run.yaml
+#   aegis workflow start simple-container-run --input '{
+#     "task": "Write a function that adds two integers and a test for it."
+#   }'
+
+apiVersion: 100monkeys.ai/v1
+kind: Workflow
+
+metadata:
+  name: "simple-container-run"
+  version: "1.0.0"
+  description: |-
+    Minimal example: Agent writes code, ContainerRun verifies it compiles and
+    tests pass. Demonstrates ContainerRun volume sharing, exit_code transitions,
+    and ParallelContainerRun with all_succeed strategy (ADR-050).
+  labels:
+    category: "example"
+    pattern: "cicd"
+    adr: "050"
+
+spec:
+  initial_state: WRITE_CODE
+
+  # Workspace volume shared between the agent and container steps.
+  volumes:
+    - name: workspace
+      persistent: false
+
+  states:
+
+    # ── 1. WRITE_CODE (Agent) ────────────────────────────────────────────────
+    # coder-v2 writes Rust source files into /workspace.
+    WRITE_CODE:
+      kind: Agent
+      agent: coder-v2
+      input: |
+        {{blackboard.task}}
+        Write Rust source files into /workspace/src/.
+        Ensure the project has a valid Cargo.toml at /workspace/Cargo.toml.
+      max_iterations: 5
+      transitions:
+        - condition: on_success
+          target: CHECK
+        - condition: on_failure
+          target: FAIL
+
+    # ── 2. CHECK (ParallelContainerRun) ──────────────────────────────────────
+    # Two containers run concurrently — one builds/tests, one checks formatting.
+    # Both must succeed (all_succeed) to transition to DONE.
+    # The workspace volume from WRITE_CODE is mounted read-write in each.
+    CHECK:
+      kind: ParallelContainerRun
+      steps:
+        - name: test
+          image: "rust:1.75-alpine"
+          command: ["cargo", "test", "--workspace"]
+          workdir: "/workspace"
+          volumes:
+            - name: workspace
+              mount_path: /workspace
+          resources:
+            cpu: 1000
+            memory: "2Gi"
+            timeout: "5m"
+        - name: fmt
+          image: "rust:1.75-alpine"
+          command: ["cargo", "fmt", "--check"]
+          workdir: "/workspace"
+          volumes:
+            - name: workspace
+              mount_path: /workspace
+              read_only: true
+          resources:
+            timeout: "1m"
+      completion: all_succeed
+      transitions:
+        - condition: on_success
+          target: DONE
+        - condition: on_failure
+          target: FAIL
+
+    # ── 3. DONE (System) ─────────────────────────────────────────────────────
+    DONE:
+      kind: System
+      command: "echo 'All checks passed.'"
+      transitions: []
+
+    # ── 4. FAIL (System) ─────────────────────────────────────────────────────
+    FAIL:
+      kind: System
+      command: "echo 'Workflow failed.'"
+      transitions: []

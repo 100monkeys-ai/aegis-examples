@@ -254,13 +254,14 @@ spec:
       format: "json"
 
   # Secrets Management (OpenBao integration - ADR-034)
-  openbao:
-    address: "http://openbao:8200"
-    auth_method: "approle"
-    approle:
-      role_id: "aegis-orchestrator-role"
-      secret_id_env_var: "OPENBAO_SECRET_ID"
-    # namespace: "aegis-system" # Uncomment if OpenBao namespaces are configured
+  secrets:
+    openbao:
+      address: "http://openbao:8200"
+      auth_method: "approle"
+      approle:
+        role_id: "aegis-orchestrator-role"
+        secret_id_env_var: "OPENBAO_SECRET_ID"
+      # namespace: "aegis-system" # Uncomment if OpenBao namespaces are configured
 
   # PostgreSQL database for persistent state
   database:
