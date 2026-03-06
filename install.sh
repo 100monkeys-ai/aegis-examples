@@ -2,7 +2,7 @@
 # Copyright (c) 2026 100monkeys.ai
 # SPDX-License-Identifier: AGPL-3.0
 #
-# install.sh — One-shot AEGIS installer for Ubuntu
+# install.sh — One-shot AEGIS installer for Ubuntu / macOS
 #
 # Installs the Rust toolchain (if absent), builds and installs the
 # aegis-orchestrator CLI via cargo, then runs `aegis up` to bring the full
@@ -26,22 +26,43 @@ info()    { echo -e "${CYAN}${BOLD}[aegis]${RESET} $*"; }
 success() { echo -e "${GREEN}${BOLD}[aegis]${RESET} $*"; }
 die()     { echo -e "${RED}${BOLD}[aegis] ERROR:${RESET} $*" >&2; exit 1; }
 
-# ── Sanity checks ─────────────────────────────────────────────────────────────
-[[ "$(uname -s)" == "Linux" ]] || die "This script targets Linux (Ubuntu). Detected: $(uname -s)"
-
-if ! command -v apt-get &>/dev/null; then
-    die "apt-get not found. This script requires an Ubuntu/Debian system."
-fi
+# ── Detect OS ─────────────────────────────────────────────────────────────────
+OS="$(uname -s)"
+case "$OS" in
+    Linux)  PLATFORM="linux" ;;
+    Darwin) PLATFORM="macos" ;;
+    *)      die "Unsupported OS: $OS. This script supports Ubuntu/Debian and macOS." ;;
+esac
+info "Detected platform: $PLATFORM"
 
 # ── Step 1: System dependencies ───────────────────────────────────────────────
 info "Installing system dependencies..."
-sudo apt-get update -qq
-sudo apt-get install -y --no-install-recommends \
-    curl \
-    build-essential \
-    pkg-config \
-    libssl-dev \
-    ca-certificates
+
+if [[ "$PLATFORM" == "linux" ]]; then
+    command -v apt-get &>/dev/null \
+        || die "apt-get not found. Linux installs require Ubuntu / Debian."
+    sudo apt-get update -qq
+    sudo apt-get install -y --no-install-recommends \
+        curl \
+        build-essential \
+        pkg-config \
+        libssl-dev \
+        ca-certificates
+
+elif [[ "$PLATFORM" == "macos" ]]; then
+    # Ensure Homebrew is present
+    if ! command -v brew &>/dev/null; then
+        info "Homebrew not found — installing..."
+        /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+        # Add brew to PATH for Apple Silicon or Intel
+        if [[ -f /opt/homebrew/bin/brew ]]; then
+            eval "$(/opt/homebrew/bin/brew shellenv)"
+        else
+            eval "$(/usr/local/bin/brew shellenv)"
+        fi
+    fi
+    brew install openssl pkg-config
+fi
 
 # ── Step 2: Rust / Cargo ──────────────────────────────────────────────────────
 if command -v cargo &>/dev/null; then
@@ -71,9 +92,12 @@ if [[ ":$PATH:" != *":$CARGO_BIN:"* ]]; then
 fi
 
 # Persist to shell profile so it survives reboots.
-SHELL_RC="$HOME/.bashrc"
-if [[ -f "$HOME/.zshrc" ]]; then
+# macOS defaults to zsh; Linux defaults to bash.
+if [[ "$PLATFORM" == "macos" ]]; then
     SHELL_RC="$HOME/.zshrc"
+else
+    SHELL_RC="$HOME/.bashrc"
+    [[ -f "$HOME/.zshrc" ]] && SHELL_RC="$HOME/.zshrc"
 fi
 if ! grep -q 'cargo/bin' "$SHELL_RC" 2>/dev/null; then
     echo '' >> "$SHELL_RC"
