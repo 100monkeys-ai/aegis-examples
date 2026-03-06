@@ -582,6 +582,199 @@
                 }
             }
         },
+        "ContainerVolumeMount": {
+            "type": "object",
+            "required": ["name", "mount_path"],
+            "properties": {
+                "name": {
+                    "type": "string",
+                    "description": "Volume name as defined under spec.storage.shared_volumes (or \"workspace\" for the default workspace)"
+                },
+                "mount_path": {
+                    "type": "string",
+                    "description": "Absolute path inside the container"
+                },
+                "read_only": {
+                    "type": "boolean",
+                    "default": false,
+                    "description": "If true, the container cannot write to the volume"
+                }
+            },
+            "additionalProperties": false
+        },
+        "ContainerResources": {
+            "type": "object",
+            "properties": {
+                "cpu": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "description": "CPU in millicores (1000 = 1 vCPU)"
+                },
+                "memory": {
+                    "type": "string",
+                    "description": "Memory limit (e.g. \"512Mi\", \"2Gi\")"
+                },
+                "timeout": {
+                    "type": "string",
+                    "description": "Maximum wall-clock time (e.g. \"5m\", \"30m\", \"1h\")"
+                }
+            },
+            "additionalProperties": false
+        },
+        "RetryConfig": {
+            "type": "object",
+            "properties": {
+                "max_attempts": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "default": 1,
+                    "description": "Total run attempts including the first"
+                },
+                "backoff": {
+                    "type": "string",
+                    "description": "Wait between retry attempts (e.g. \"30s\", \"2m\")"
+                }
+            },
+            "additionalProperties": false
+        },
+        "ContainerRunStep": {
+            "type": "object",
+            "required": ["name", "image", "command"],
+            "properties": {
+                "name": {
+                    "type": "string",
+                    "description": "Unique step identifier — used as the key in this state's output object"
+                },
+                "image": {
+                    "type": "string",
+                    "description": "Container image reference (registry/repo:tag)"
+                },
+                "image_pull_policy": {
+                    "type": "string",
+                    "enum": ["Always", "IfNotPresent", "Never"],
+                    "default": "IfNotPresent"
+                },
+                "command": {
+                    "type": "array",
+                    "items": { "type": "string" },
+                    "minItems": 1,
+                    "description": "Exec-form command"
+                },
+                "shell": {
+                    "type": "boolean",
+                    "default": false,
+                    "description": "If true, runs command via /bin/sh -c"
+                },
+                "env": {
+                    "type": "object",
+                    "additionalProperties": { "type": "string" }
+                },
+                "workdir": {
+                    "type": "string",
+                    "description": "Working directory inside the container"
+                },
+                "volumes": {
+                    "type": "array",
+                    "items": { "$ref": "#/definitions/ContainerVolumeMount" }
+                },
+                "resources": {
+                    "$ref": "#/definitions/ContainerResources"
+                },
+                "registry_credentials": {
+                    "type": "string",
+                    "description": "OpenBao path to registry credentials (e.g. \"vault:secret/registry-creds\")"
+                }
+            },
+            "additionalProperties": false
+        },
+        "ContainerRunState": {
+            "type": "object",
+            "required": ["kind", "image", "command", "transitions"],
+            "properties": {
+                "kind": {
+                    "type": "string",
+                    "enum": ["ContainerRun"]
+                },
+                "name": {
+                    "type": "string",
+                    "description": "Human-readable label for this step displayed in the Synapse UI and audit logs (e.g. \"Compile and Build\")"
+                },
+                "image": {
+                    "type": "string",
+                    "description": "Container image reference (registry/repo:tag)"
+                },
+                "image_pull_policy": {
+                    "type": "string",
+                    "enum": ["Always", "IfNotPresent", "Never"],
+                    "default": "IfNotPresent"
+                },
+                "command": {
+                    "type": "array",
+                    "items": { "type": "string" },
+                    "minItems": 1,
+                    "description": "Exec-form command (first element is the binary)"
+                },
+                "shell": {
+                    "type": "boolean",
+                    "default": false,
+                    "description": "If true, runs command joined with spaces via /bin/sh -c"
+                },
+                "env": {
+                    "type": "object",
+                    "additionalProperties": { "type": "string" }
+                },
+                "workdir": {
+                    "type": "string",
+                    "description": "Working directory inside the container"
+                },
+                "volumes": {
+                    "type": "array",
+                    "items": { "$ref": "#/definitions/ContainerVolumeMount" }
+                },
+                "resources": {
+                    "$ref": "#/definitions/ContainerResources"
+                },
+                "registry_credentials": {
+                    "type": "string",
+                    "description": "OpenBao path to registry credentials (e.g. \"vault:secret/registry-creds\")"
+                },
+                "retry": {
+                    "$ref": "#/definitions/RetryConfig"
+                },
+                "transitions": {
+                    "type": "array",
+                    "items": { "$ref": "#/definitions/Transition" }
+                }
+            },
+            "additionalProperties": false
+        },
+        "ParallelContainerRunState": {
+            "type": "object",
+            "required": ["kind", "steps", "transitions"],
+            "properties": {
+                "kind": {
+                    "type": "string",
+                    "enum": ["ParallelContainerRun"]
+                },
+                "steps": {
+                    "type": "array",
+                    "items": { "$ref": "#/definitions/ContainerRunStep" },
+                    "minItems": 1,
+                    "description": "Container steps to execute concurrently"
+                },
+                "completion": {
+                    "type": "string",
+                    "enum": ["all_succeed", "any_succeed", "best_effort"],
+                    "default": "all_succeed",
+                    "description": "Exit strategy: all_succeed (default), any_succeed, or best_effort"
+                },
+                "transitions": {
+                    "type": "array",
+                    "items": { "$ref": "#/definitions/Transition" }
+                }
+            },
+            "additionalProperties": false
+        },
         "State": {
             "oneOf": [
                 {
@@ -595,6 +788,12 @@
                 },
                 {
                     "$ref": "#/definitions/ParallelAgentsState"
+                },
+                {
+                    "$ref": "#/definitions/ContainerRunState"
+                },
+                {
+                    "$ref": "#/definitions/ParallelContainerRunState"
                 }
             ]
         }
