@@ -140,6 +140,8 @@ services:
       # - AEGIS_NFS_HOST=${AEGIS_NFS_HOST}
       # Keep agent container after execution (for debugging)
       - AEGIS_KEEP_CONTAINER=${AEGIS_KEEP_CONTAINER:-false}
+      # Orchestrator SMCP token signing key (PEM with \n escapes from .env)
+      - AEGIS_SMCP_PRIVATE_KEY=${AEGIS_SMCP_PRIVATE_KEY}
       # Local-host storage mount point — must match the bind-mount target below
       - AEGIS_LOCAL_HOST_MOUNT_POINT=/tmp/aegis-volumes
       # LLM provider API keys (referenced by spec.llm_providers[*].api_key)
