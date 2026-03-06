@@ -14,6 +14,7 @@ services:
   postgres:
     image: postgres:15-alpine
     container_name: aegis-postgres
+    profiles: [core]
     environment:
       POSTGRES_MULTIPLE_DATABASES: "temporal,aegis,seaweedfs"
       POSTGRES_USER: aegis
@@ -36,6 +37,7 @@ services:
   temporal:
     image: temporalio/auto-setup:1.23.0
     container_name: aegis-temporal
+    profiles: [temporal]
     depends_on:
       postgres:
         condition: service_healthy
@@ -69,6 +71,7 @@ services:
   temporal-ui:
     image: temporalio/ui:2.21.3
     container_name: aegis-temporal-ui
+    profiles: [temporal]
     depends_on:
       - temporal
     environment:
@@ -83,6 +86,7 @@ services:
   temporal-worker:
     image: ghcr.io/100monkeys-ai/aegis-temporal-worker:latest
     container_name: aegis-temporal-worker
+    profiles: [temporal]
     depends_on:
       temporal:
         condition: service_healthy
@@ -114,12 +118,9 @@ services:
     #   context: ../../aegis-orchestrator
     #   dockerfile: docker/Dockerfile.runtime
     container_name: aegis-runtime
+    profiles: [core]
     depends_on:
       postgres:
-        condition: service_healthy
-      temporal:
-        condition: service_healthy
-      ollama:
         condition: service_healthy
     environment:
       - RUST_LOG=info,aegis_orchestrator=debug
@@ -139,6 +140,8 @@ services:
       # - AEGIS_NFS_HOST=${AEGIS_NFS_HOST}
       # Keep agent container after execution (for debugging)
       - AEGIS_KEEP_CONTAINER=${AEGIS_KEEP_CONTAINER:-false}
+      # Local-host storage mount point — must match the bind-mount target below
+      - AEGIS_LOCAL_HOST_MOUNT_POINT=/tmp/aegis-volumes
       # LLM provider API keys (referenced by spec.llm_providers[*].api_key)
       - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
       # OpenBao Secret ID for AppRole authentication (referenced by spec.openbao.approle)
@@ -170,6 +173,7 @@ services:
   openbao:
     image: openbao/openbao:latest
     container_name: aegis-openbao
+    profiles: [iam]
     ports:
       - "8200:8200"
     environment:
@@ -197,6 +201,7 @@ services:
   keycloak:
     image: quay.io/keycloak/keycloak:24.0
     container_name: aegis-keycloak
+    profiles: [iam]
     command: start-dev
     environment:
       KC_HTTP_PORT: "8180"
@@ -228,6 +233,7 @@ services:
   ollama:
     image: ollama/ollama:latest
     container_name: aegis-ollama
+    profiles: [llm]
     # Uncomment if you have nvidia GPU and you have proper drivers installed
     # deploy:
     #   resources:
@@ -262,6 +268,7 @@ services:
   seaweedfs-master:
     image: chrislusf/seaweedfs:latest
     container_name: aegis-seaweedfs-master
+    profiles: [storage]
     command: 'master -ip=seaweedfs-master -ip.bind=0.0.0.0 -metricsPort=9324'
     ports:
       - "9333:9333"  # HTTP API + Admin Web UI
@@ -277,6 +284,7 @@ services:
   seaweedfs-volume:
     image: chrislusf/seaweedfs:latest
     container_name: aegis-seaweedfs-volume
+    profiles: [storage]
     command: 'volume -ip=seaweedfs-volume -master="seaweedfs-master:9333" -ip.bind=0.0.0.0 -port=8080 -metricsPort=9325'
     depends_on:
       - seaweedfs-master
@@ -294,6 +302,7 @@ services:
   seaweedfs-filer:
     image: chrislusf/seaweedfs:latest
     container_name: aegis-seaweedfs-filer
+    profiles: [storage]
     command: 'filer -ip=seaweedfs-filer -master="seaweedfs-master:9333" -ip.bind=0.0.0.0 -metricsPort=9326'
     tty: true
     stdin_open: true
@@ -314,6 +323,7 @@ services:
   seaweedfs-webdav:
     image: chrislusf/seaweedfs:latest
     container_name: aegis-seaweedfs-webdav
+    profiles: [storage]
     command: 'webdav -filer="seaweedfs-filer:8888" -ip.bind=0.0.0.0'
     depends_on:
       - seaweedfs-filer
@@ -329,6 +339,7 @@ services:
   workflow-seeder:
     image: curlimages/curl:latest
     container_name: aegis-workflow-seeder
+    profiles: [temporal]
     depends_on:
       temporal-worker:
         condition: service_started
