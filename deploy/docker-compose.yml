@@ -141,6 +141,8 @@ services:
       - AEGIS_KEEP_CONTAINER=${AEGIS_KEEP_CONTAINER:-false}
       # LLM provider API keys (referenced by spec.llm_providers[*].api_key)
       - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      # OpenBao Secret ID for AppRole authentication (referenced by spec.openbao.approle)
+      - OPENBAO_SECRET_ID=${OPENBAO_SECRET_ID:-test-secret-id}
     ports:
       - "8088:8088"   # AEGIS HTTP API
       - "50051:50051" # gRPC for worker activities
@@ -155,6 +157,30 @@ services:
       - ./local-volumes:/tmp/aegis-volumes
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8088/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  # ============================================================================
+  # Secrets Management (ADR-034)
+  # ============================================================================
+
+  # OpenBao (Secrets backend)
+  openbao:
+    image: openbao/openbao:latest
+    container_name: aegis-openbao
+    ports:
+      - "8200:8200"
+    environment:
+      BAO_DEV_ROOT_TOKEN_ID: "root"
+      BAO_DEV_LISTEN_ADDRESS: "0.0.0.0:8200"
+    networks:
+      - aegis-network
+    cap_add:
+      - IPC_LOCK
+    healthcheck:
+      test: ["CMD", "bao", "status"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -264,6 +290,34 @@ services:
     networks:
       - aegis-network
     restart: unless-stopped
+
+  # One-shot service: registers built-in workflow manifests (e.g. The Forge) on
+  # every stack startup.  Uses the temporal-worker's HTTP /register-workflow
+  # endpoint (port 3000).  Set restart:no so it runs exactly once per `up`.
+  workflow-seeder:
+    image: curlimages/curl:latest
+    container_name: aegis-workflow-seeder
+    depends_on:
+      temporal-worker:
+        condition: service_started
+      aegis-runtime:
+        condition: service_healthy
+    volumes:
+      - ../agents/workflows:/workflows:ro
+    # Wait for temporal-worker HTTP port to accept connections before posting.
+    command: >
+      sh -c "
+        echo 'Waiting for temporal-worker HTTP API...' &&
+        until curl -sf http://temporal-worker:3000/health > /dev/null; do sleep 2; done &&
+        echo 'Registering The Forge workflow...' &&
+        curl -sf -X POST http://temporal-worker:3000/register-workflow
+          -H 'Content-Type: application/x-yaml'
+          --data-binary @/workflows/the-forge.yaml &&
+        echo 'The Forge workflow registered successfully'
+      "
+    networks:
+      - aegis-network
+    restart: "no"
 
 networks:
   aegis-network:
