@@ -98,62 +98,62 @@ spec:
       endpoint: "http://ollama:11434"
       enabled: true
       models:
-        - alias: "default"
-          model: "phi3:mini"
-          capabilities: ["code", "reasoning"]
-          context_window: 4096
-          cost_per_1k_tokens: 0.0
+    #     - alias: "default"
+    #       model: "phi3:mini"
+    #       capabilities: ["code", "reasoning"]
+    #       context_window: 4096
+    #       cost_per_1k_tokens: 0.0
         - alias: "fast"
-          model: "qwen2.5-coder:7b"
+          model: "phi3:mini"
           capabilities: ["code"]
           context_window: 4096
           cost_per_1k_tokens: 0.0
-        - alias: "smart"
-          model: "phi3:mini"
-          capabilities: ["code", "reasoning"]
-          context_window: 4096
-          cost_per_1k_tokens: 0.0
-        - alias: "cheap"
-          model: "qwen2.5-coder:7b"
-          capabilities: ["code"]
-          context_window: 4096
-          cost_per_1k_tokens: 0.0
-        - alias: "local"
-          model: "phi3:mini"
-          capabilities: ["code", "reasoning"]
-          context_window: 4096
-          cost_per_1k_tokens: 0.0
+    #     - alias: "smart"
+    #       model: "phi3:mini"
+    #       capabilities: ["code", "reasoning"]
+    #       context_window: 4096
+    #       cost_per_1k_tokens: 0.0
+    #     - alias: "cheap"
+    #       model: "qwen2.5-coder:7b"
+    #       capabilities: ["code"]
+    #       context_window: 4096
+    #       cost_per_1k_tokens: 0.0
+    #     - alias: "local"
+    #       model: "phi3:mini"
+    #       capabilities: ["code", "reasoning"]
+    #       context_window: 4096
+    #       cost_per_1k_tokens: 0.0
     - name: "anthropic"
       type: "anthropic"
       endpoint: "https://api.anthropic.com/v1"
       api_key: "env:ANTHROPIC_API_KEY"
       enabled: true
       models:
-        - alias: "default"
-          model: "claude-haiku-4-5"
-          capabilities: ["code", "reasoning"]
-          context_window: 200000
-          cost_per_1k_tokens: 0.0008
+        # - alias: "default"
+        #   model: "claude-haiku-4-5"
+        #   capabilities: ["code", "reasoning"]
+        #   context_window: 200000
+        #   cost_per_1k_tokens: 0.0008
         - alias: "smart"
           model: "claude-haiku-4-5"
           capabilities: ["code", "reasoning"]
           context_window: 200000
           cost_per_1k_tokens: 0.0008
-        - alias: "fast"
-          model: "claude-haiku-4-5"
-          capabilities: ["code"]
-          context_window: 200000
-          cost_per_1k_tokens: 0.0008
-        - alias: "cheap"
-          model: "claude-haiku-4-5"
-          capabilities: ["code"]
-          context_window: 200000
-          cost_per_1k_tokens: 0.0008
+        # - alias: "fast"
+        #   model: "claude-haiku-4-5"
+        #   capabilities: ["code"]
+        #   context_window: 200000
+        #   cost_per_1k_tokens: 0.0008
+        # - alias: "cheap"
+        #   model: "claude-haiku-4-5"
+        #   capabilities: ["code"]
+        #   context_window: 200000
+        #   cost_per_1k_tokens: 0.0008
         - alias: "judge"
-          model: "claude-haiku-4-5"
+          model: "claude-sonnet-4-5"
           capabilities: ["code"]
           context_window: 200000
-          cost_per_1k_tokens: 0.0008
+          cost_per_1k_tokens: 0.003
     - name: "lmstudio"
       type: "openai-compatible"
       endpoint: "http://10.10.0.117:1234/v1" # Replace 10.10.0.117 with your host/LMStudio IP address
@@ -164,21 +164,26 @@ spec:
           capabilities: ["code", "reasoning"]
           context_window: 8192
           cost_per_1k_tokens: 0.0
-        - alias: "smart"
+        - alias: "tool-call-judge"
           model: "google/gemma-3-4b"
           capabilities: ["code", "reasoning"]
           context_window: 8192
           cost_per_1k_tokens: 0.0
-        - alias: "fast"
-          model: "google/gemma-3-4b"
-          capabilities: ["code"]
-          context_window: 8192
-          cost_per_1k_tokens: 0.0
-        - alias: "cheap"
-          model: "google/gemma-3-4b"
-          capabilities: ["code"]
-          context_window: 8192
-          cost_per_1k_tokens: 0.0
+    #     - alias: "smart"
+    #       model: "qwen/qwen3-vl-8b"
+    #       capabilities: ["code", "reasoning"]
+    #       context_window: 8192
+    #       cost_per_1k_tokens: 0.0
+    #     - alias: "fast"
+    #       model: "google/gemma-3-4b"
+    #       capabilities: ["code"]
+    #       context_window: 8192
+    #       cost_per_1k_tokens: 0.0
+    #     - alias: "cheap"
+    #       model: "google/gemma-3-4b"
+    #       capabilities: ["code"]
+    #       context_window: 8192
+    #       cost_per_1k_tokens: 0.0
 
     # Uncomment to add an OpenAI provider:
     # - name: "openai"
@@ -199,8 +204,8 @@ spec:
     #       cost_per_1k_tokens: 0.00015
 
   llm_selection:
-    strategy: "prefer-local"
-    default_provider: "ollama"
+    strategy: "prefer-cloud"
+    default_provider: "anthropic"
     max_retries: 3
     retry_delay_ms: 1000
 
@@ -231,15 +236,7 @@ spec:
     runtime_registry_path: "runtime-registry.yaml"
 
   storage:
-    backend: "seaweedfs"
-    fallback_to_local: true  # Gracefully fallback to local if SeaweedFS unavailable
-    seaweedfs:
-      filer_url: "http://seaweedfs-filer:8888"
-      mount_point: "/var/lib/aegis/storage"
-      default_ttl_hours: 24
-      default_size_limit_mb: 1000
-      max_size_limit_mb: 10000
-      gc_interval_minutes: 60
+    backend: "local_host"
     local_host:
       mount_point: "/tmp/aegis-volumes"
 
@@ -272,7 +269,7 @@ spec:
   # Temporal workflow engine
   temporal:
     address: "temporal:7233"
-    worker_http_endpoint: "http://aegis-runtime:3000"
+    worker_http_endpoint: "http://temporal-worker:3000"
     worker_secret: "env:TEMPORAL_WORKER_SECRET"
     namespace: "default"
     task_queue: "aegis-agents"

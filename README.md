@@ -1,26 +1,24 @@
 # AEGIS Examples
 
-Example agents and the local development stack for the AEGIS runtime.
+Example agents and workflows for AEGIS.
 
 [![License](https://img.shields.io/badge/license-AGPL--3.0-blue.svg)](LICENSE)
 
-## Deploy the local stack
+## Initialize AEGIS locally
 
-All Docker Compose files and configuration needed to run AEGIS locally are in [`deploy/`](deploy/).
+Initialize your local AEGIS stack with `aegis init`, then use this repository for deployable examples.
 
 ```bash
 git clone https://github.com/100monkeys-ai/aegis-examples.git
+
+# Install AEGIS
+curl -fsSL https://raw.githubusercontent.com/100monkeys-ai/aegis-examples/main/install.sh | bash
+
+# Initialize local stack and config
+aegis init
+
+# Clone examples and deploy one
 cd aegis-examples
-
-# Configure environment (edit if needed)
-cp deploy/.env.example deploy/.env
-
-# Start all services (Postgres, SeaweedFS, Temporal, Keycloak, Ollama, Cortex)
-docker compose -f deploy/docker-compose.yml up -d
-
-# Install the AEGIS binary
-curl -fsSL https://github.com/100monkeys-ai/aegis-orchestrator/releases/latest/download/aegis-linux-x86_64.tar.gz \
-  | tar -xz -C /usr/local/bin
 
 # Deploy and run the hello-world example
 aegis agent deploy ./agents/hello-world/agent.yaml
@@ -29,7 +27,7 @@ aegis task execute hello-world \
   --follow
 ```
 
-See [deploy/README.md](deploy/README.md) for full details and the [Getting Started guide](https://docs.aegis.ai/docs/getting-started) for a step-by-step walkthrough.
+See the [Getting Started guide](https://docs.aegis.ai/docs/getting-started) for a step-by-step walkthrough.
 
 ---
 
@@ -41,7 +39,6 @@ This repository contains ready-to-run example agents that showcase:
 - Security policy configuration
 - Memory system (Cortex) usage
 - Best practices for agent development
-- The complete local deployment stack
 
 ## Examples
 
@@ -160,27 +157,26 @@ See the [Workflow Manifest Reference](https://docs.aegis.ai/docs/reference/workf
 
 ### Prerequisites
 
-- **Docker** 24.0+ and **Docker Compose** v2.20+ — for the local backing-service stack
-- **AEGIS binary** — download from the [GitHub Releases page](https://github.com/100monkeys-ai/aegis-orchestrator/releases)
+- **Docker** 24.0+ and **Docker Compose** v2.20+ — required by `aegis init`
+- **AEGIS CLI** — install with:
+  `curl -fsSL https://raw.githubusercontent.com/100monkeys-ai/aegis-examples/main/install.sh | bash`
 - **Python 3.11+** — for Python-based agents
 - API keys for the services you want to use (OpenAI, GitHub, etc.)
 
 ### Running an Example
 
-1. **Clone this repository and start the local stack**:
+1. **Install AEGIS and initialize your local stack**:
+
+   ```bash
+   curl -fsSL https://raw.githubusercontent.com/100monkeys-ai/aegis-examples/main/install.sh | bash
+   aegis init
+   ```
+
+2. **Clone this examples repository**:
 
    ```bash
    git clone https://github.com/100monkeys-ai/aegis-examples
    cd aegis-examples
-   cp deploy/.env.example deploy/.env
-   docker compose -f deploy/docker-compose.yml up -d
-   ```
-
-2. **Install the AEGIS binary**:
-
-   ```bash
-   curl -fsSL https://github.com/100monkeys-ai/aegis-orchestrator/releases/latest/download/aegis-linux-x86_64.tar.gz \
-     | tar -xz -C /usr/local/bin
    ```
 
 3. **Deploy and run an agent**:
