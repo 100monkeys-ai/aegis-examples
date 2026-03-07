@@ -82,7 +82,7 @@ cargo --version &>/dev/null || die "cargo not found on PATH after install. Try: 
 
 # ── Step 3: Install aegis-orchestrator ────────────────────────────────────────
 info "Installing aegis-orchestrator CLI via cargo..."
-cargo install aegis-orchestrator --locked
+cargo install aegis-orchestrator
 success "aegis installed: $(aegis --version)"
 
 # Ensure the cargo bin dir is on PATH for the aegis up call and future sessions.
