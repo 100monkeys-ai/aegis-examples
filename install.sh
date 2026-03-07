@@ -15,6 +15,8 @@
 
 set -euo pipefail
 
+AEGIS_VERSION="${AEGIS_VERSION:-0.7.0-pre-alpha}"
+
 # ── Colours ───────────────────────────────────────────────────────────────────
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -41,13 +43,20 @@ info "Installing system dependencies..."
 if [[ "$PLATFORM" == "linux" ]]; then
     command -v apt-get &>/dev/null \
         || die "apt-get not found. Linux installs require Ubuntu / Debian."
-    sudo apt-get update -qq
-    sudo apt-get install -y --no-install-recommends \
-        curl \
-        build-essential \
-        pkg-config \
-        libssl-dev \
-        ca-certificates
+    MISSING_APT_PKGS=()
+    for pkg in curl build-essential pkg-config libssl-dev ca-certificates; do
+        if ! dpkg-query -W -f='${Status}' "$pkg" 2>/dev/null | grep -q "install ok installed"; then
+            MISSING_APT_PKGS+=("$pkg")
+        fi
+    done
+
+    if [[ ${#MISSING_APT_PKGS[@]} -eq 0 ]]; then
+        success "System dependencies already installed. Skipping apt install."
+    else
+        info "Installing missing apt packages: ${MISSING_APT_PKGS[*]}"
+        sudo apt-get update -qq
+        sudo apt-get install -y --no-install-recommends "${MISSING_APT_PKGS[@]}"
+    fi
 
 elif [[ "$PLATFORM" == "macos" ]]; then
     # Ensure Homebrew is present
@@ -61,7 +70,20 @@ elif [[ "$PLATFORM" == "macos" ]]; then
             eval "$(/usr/local/bin/brew shellenv)"
         fi
     fi
-    brew install openssl pkg-config
+
+    MISSING_BREW_PKGS=()
+    for pkg in openssl pkg-config; do
+        if ! brew list --versions "$pkg" >/dev/null 2>&1; then
+            MISSING_BREW_PKGS+=("$pkg")
+        fi
+    done
+
+    if [[ ${#MISSING_BREW_PKGS[@]} -eq 0 ]]; then
+        success "System dependencies already installed. Skipping brew install."
+    else
+        info "Installing missing brew packages: ${MISSING_BREW_PKGS[*]}"
+        brew install "${MISSING_BREW_PKGS[@]}"
+    fi
 fi
 
 # ── Step 2: Docker ────────────────────────────────────────────────────────────
@@ -73,10 +95,36 @@ if grep -qiE 'microsoft|WSL' /proc/version 2>/dev/null; then
     IS_WSL=true
 fi
 
-if docker info &>/dev/null 2>&1; then
-    success "Docker is running ($(docker --version))."
+if command -v docker &>/dev/null; then
+    if docker info &>/dev/null 2>&1; then
+        success "Docker is running ($(docker --version))."
+    else
+        info "Docker is installed but daemon is not reachable. Attempting to start daemon..."
+        if command -v systemctl &>/dev/null; then
+            sudo systemctl start docker 2>/dev/null || true
+        else
+            sudo service docker start 2>/dev/null || true
+        fi
+
+        if docker info &>/dev/null 2>&1; then
+            success "Docker daemon started successfully."
+        else
+            echo ""
+            echo -e "${RED}${BOLD}[aegis] ERROR:${RESET} Docker is installed but not reachable for current user/session."
+            if [[ "$IS_WSL" == "true" ]]; then
+                echo -e "        WSL detected. Ensure Docker Desktop WSL integration is enabled:"
+                echo -e "          https://docs.docker.com/desktop/wsl/"
+            fi
+            echo -e "        Try:"
+            echo -e "          - restarting Docker Desktop / Docker daemon"
+            echo -e "          - re-login after docker group changes"
+            echo -e "          - verifying: ${BOLD}docker info${RESET}"
+            echo ""
+            exit 1
+        fi
+    fi
 elif [[ "$PLATFORM" == "linux" ]]; then
-    if [[ "$IS_WSL" == "true" ]] && ! command -v docker &>/dev/null; then
+    if [[ "$IS_WSL" == "true" ]]; then
         echo ""
         echo -e "${CYAN}${BOLD}[aegis] WSL detected.${RESET} Docker Engine is not installed in this WSL distro."
         echo -e "        Docker Desktop with WSL integration is the easiest option:"
@@ -134,9 +182,18 @@ export PATH="${CARGO_HOME:-$HOME/.cargo}/bin:$PATH"
 cargo --version &>/dev/null || die "cargo not found on PATH after install. Try: source \$HOME/.cargo/env"
 
 # ── Step 4: Install aegis-orchestrator ────────────────────────────────────────
-info "Installing aegis-orchestrator CLI via cargo..."
-cargo install aegis-orchestrator --version 0.7.0-pre-alpha
-success "aegis installed: $(aegis --version)"
+CURRENT_AEGIS_VERSION=""
+if command -v aegis &>/dev/null; then
+    CURRENT_AEGIS_VERSION="$(aegis --version 2>/dev/null | grep -Eo '[0-9]+\.[0-9]+\.[^ ]+' || true)"
+fi
+
+if [[ "$CURRENT_AEGIS_VERSION" == "$AEGIS_VERSION" ]]; then
+    success "aegis $AEGIS_VERSION already installed. Skipping cargo install."
+else
+    info "Installing aegis-orchestrator CLI via cargo (version: $AEGIS_VERSION)..."
+    cargo install aegis-orchestrator --version "$AEGIS_VERSION"
+    success "aegis installed: $(aegis --version)"
+fi
 
 # Ensure the cargo bin dir is on PATH for the aegis up call and future sessions.
 CARGO_BIN="${CARGO_HOME:-$HOME/.cargo}/bin"
