@@ -12,7 +12,7 @@ Initialize your local AEGIS stack with `aegis init`, then use this repository fo
 git clone https://github.com/100monkeys-ai/aegis-examples.git
 
 # Install AEGIS
-curl -fsSL https://raw.githubusercontent.com/100monkeys-ai/aegis-examples/main/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/100monkeys-ai/aegis-orchestrator/main/install.sh | bash
 
 # Initialize local stack and config
 aegis init
@@ -159,7 +159,7 @@ See the [Workflow Manifest Reference](https://docs.aegis.ai/docs/reference/workf
 
 - **Docker** 24.0+ and **Docker Compose** v2.20+ — required by `aegis init`
 - **AEGIS CLI** — install with:
-  `curl -fsSL https://raw.githubusercontent.com/100monkeys-ai/aegis-examples/main/install.sh | bash`
+  `curl -fsSL https://raw.githubusercontent.com/100monkeys-ai/aegis-orchestrator/main/install.sh | bash`
 - **Python 3.11+** — for Python-based agents
 - API keys for the services you want to use (OpenAI, GitHub, etc.)
 
@@ -168,7 +168,7 @@ See the [Workflow Manifest Reference](https://docs.aegis.ai/docs/reference/workf
 1. **Install AEGIS and initialize your local stack**:
 
    ```bash
-   curl -fsSL https://raw.githubusercontent.com/100monkeys-ai/aegis-examples/main/install.sh | bash
+   curl -fsSL https://raw.githubusercontent.com/100monkeys-ai/aegis-orchestrator/main/install.sh | bash
    aegis init
    ```
 
