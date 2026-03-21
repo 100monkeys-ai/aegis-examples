@@ -50,8 +50,7 @@ spec:
   execution:
     mode: "iterative"  # Enable refinement if the text sounds too much like an AI
     max_iterations: 10
-    memory: true       # Learn which phrasings work best over time
-    
+
     validation:
       - type: semantic
         judge_agent: "copy-authenticity-judge"

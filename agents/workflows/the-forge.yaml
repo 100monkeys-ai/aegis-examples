@@ -158,7 +158,6 @@ spec:
         5. External dependencies and integration points
 
         Write the specification to /workspace/requirements.md.
-      timeout: 3m
       transitions:
         - condition: on_success
           target: ARCHITECTURE
@@ -194,7 +193,6 @@ spec:
         8. Acceptance criteria the automated tests must satisfy
 
         Write the architecture to /workspace/architecture.md.
-      timeout: 5m
       transitions:
         - condition: on_success
           target: ARCH_APPROVAL
@@ -227,7 +225,6 @@ spec:
         - Type **"approve"** to proceed to test design
         - Type **"revise"** to send the architecture back for rework
           (add feedback below to guide the revision)
-      timeout: 3600s
       default_response: "revise"
       transitions:
         - condition: input_equals
@@ -272,7 +269,6 @@ spec:
           {{workflow.test_command}}
 
         Also write /workspace/test-strategy.md summarising the strategy.
-      timeout: 5m
       transitions:
         - condition: on_success
           target: TEST_APPROVAL
@@ -305,7 +301,6 @@ spec:
 
         - Type **"approve"** to proceed to implementation
         - Type **"revise"** to send the test suite back for rework
-      timeout: 3600s
       default_response: "revise"
       transitions:
         - condition: input_equals
@@ -356,7 +351,6 @@ spec:
         - All code required to make the test suite pass
 
         Do NOT modify files under /workspace/tests/.
-      timeout: 15m
       transitions:
         - condition: on_success
           target: TEST
@@ -372,7 +366,6 @@ spec:
       kind: System
       command: "{{workflow.test_command}}"
       workdir: /workspace
-      timeout: 10m
       transitions:
         - condition: exit_code_zero
           target: AUDIT
@@ -479,7 +472,6 @@ spec:
         confidence_weighting:
           agreement_factor: 0.7
           self_confidence_factor: 0.3
-      timeout: 25m
       transitions:
         - condition: consensus
           threshold: 0.8
@@ -545,7 +537,6 @@ spec:
         - Type **"approve"** — deploy to production
         - Type **"revise"** — return to implementation with your feedback
         - Type **"reject"** — cancel this deployment permanently
-      timeout: 3600s
       default_response: "reject"
       transitions:
         - condition: input_equals
@@ -608,7 +599,6 @@ spec:
         with this team's standards.
 
         Write proposed constitution updates to /workspace/constitution-proposals.md.
-      timeout: 5m
       transitions: []  # Terminal — pipeline complete
 
     # ==========================================================================

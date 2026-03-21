@@ -62,15 +62,12 @@ spec:
 
   execution:
     mode: "one-shot"  # Single synthesis pass — no iterative refinement needed
-    memory: true       # Accumulate constitutional knowledge across pipeline runs
 
     validation:
-      semantic:
-        enabled: true
-        threshold: 0.75
-        prompt: |
-          Validate that the constitutional learning output meets quality standards:
-          {criteria}
+      - type: semantic
+        judge_agent: "basic-judge"
+        criteria: |
+          Validate that the constitutional learning output meets quality standards.
 
           Check:
           - At least 3 concrete constitutional proposals are present
@@ -80,6 +77,7 @@ spec:
           - The summary identifies meaningful constitutional gaps
           - Output is written to /workspace/constitution-proposals.md (referenced in the response)
           - No proposal is a platitude (e.g. "write clean code", "add comments")
+        min_score: 0.75
 
   security:
     network:

@@ -16,7 +16,6 @@ spec:
       kind: Agent
       agent: "greeter"
       input: "Jeshua"
-      timeout: 60s
       transitions:
         - condition: on_success
           target: COMPLETE

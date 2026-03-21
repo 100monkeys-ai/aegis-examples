@@ -73,7 +73,6 @@ spec:
         and supporting evidence. Output in {{workflow.context.language}}.
 
         Topic: {{workflow.task}}
-      timeout: 5m
       transitions:
         - condition: on_success
           target: STORE
@@ -123,7 +122,6 @@ spec:
         ---
 
         Write a clear, accurate summary. Do not exceed the word limit.
-      timeout: 3m
       transitions:
         - condition: score_above
           threshold: 0.8

@@ -227,29 +227,37 @@ aegis task list
 ### Minimal Configuration (Echo)
 
 ```yaml
-version: "1.1"
-agent:
+apiVersion: 100monkeys.ai/v1
+kind: Agent
+metadata:
   name: "echo"
-  runtime: "python:3.11"
-task:
-  instruction: "Echo the input back to the user."
+  version: "1.0.0"
+spec:
+  runtime:
+    language: "python"
+    version: "3.11"
+  task:
+    instruction: "Echo the input back to the user."
 ```
 
 ### Full Configuration (Coder)
 
 ```yaml
-version: "1.1"
-agent:
+apiVersion: 100monkeys.ai/v1
+kind: Agent
+metadata:
   name: "coder"
-  version: "0.1.0"
+  version: "1.0.0"
   description: "A technical agent that provides code snippets."
-  runtime: "python:3.10-slim"
+spec:
+  runtime:
+    language: "python"
+    version: "3.10"
   task:
     instruction: "You are an expert Rust programmer..."
   execution:
-    max_retries: 3
-    timeout_seconds: 60
-    mode: "single"
+    mode: "iterative"
+    max_iterations: 3
 ```
 
 ## Creating Your Own Agent
@@ -290,12 +298,17 @@ Use these demo agents as templates:
 **Template:**
 
 ```yaml
-version: "1.1"
-agent:
+apiVersion: 100monkeys.ai/v1
+kind: Agent
+metadata:
   name: "transformer"
-  runtime: "python:3.11"
-task:
-  instruction: "Transform the input by..."
+  version: "1.0.0"
+spec:
+  runtime:
+    language: "python"
+    version: "3.11"
+  task:
+    instruction: "Transform the input by..."
 ```
 
 ---
@@ -313,17 +326,23 @@ task:
 **Template:**
 
 ```yaml
-version: "1.1"
-agent:
+apiVersion: 100monkeys.ai/v1
+kind: Agent
+metadata:
   name: "expert"
-  runtime: "python:3.10-slim"
+  version: "1.0.0"
+spec:
+  runtime:
+    language: "python"
+    version: "3.10"
   task:
     instruction: |
       You are an expert in [domain].
       When given [input], provide [output].
       Format: [specific format]
   execution:
-    timeout_seconds: 120
+    mode: "iterative"
+    max_iterations: 3
 ```
 
 ---
@@ -341,17 +360,23 @@ agent:
 **Template:**
 
 ```yaml
-version: "1.1"
-agent:
+apiVersion: 100monkeys.ai/v1
+kind: Agent
+metadata:
   name: "creator"
-  runtime: "python:3.10-slim"
+  version: "1.0.0"
+spec:
+  runtime:
+    language: "python"
+    version: "3.10"
   task:
     instruction: |
       You are a [creative role].
       Style: [constraints]
       Rules: [specific rules]
   execution:
-    timeout_seconds: 180
+    mode: "iterative"
+    max_iterations: 3
 ```
 
 ## Troubleshooting Demo Agents

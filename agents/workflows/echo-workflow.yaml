@@ -18,7 +18,6 @@ spec:
       command: "echo"
       env:
         MESSAGE: "{{workflow.context.message}}"
-      timeout: 10s
       transitions:
         - condition: exit_code_zero
           target: COMPLETE

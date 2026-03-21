@@ -27,8 +27,7 @@ spec:
   execution:
     mode: "iterative"  # Enable refinement for code quality
     max_iterations: 10
-    memory: true  # Learn common coding patterns
-    
+
     validation:
       - type: semantic
         judge_agent: "code-quality-judge"

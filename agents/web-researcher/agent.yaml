@@ -33,8 +33,7 @@ spec:
   execution:
     mode: "iterative"  # Enable refinement loop
     max_iterations: 5
-    memory: true  # Enable Cortex memory
-    
+
     validation:
       - type: semantic
         judge_agent: "research-quality-judge"

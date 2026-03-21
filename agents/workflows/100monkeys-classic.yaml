@@ -59,8 +59,6 @@ spec:
         {{/if}}
       
       # Timeout for code generation
-      timeout: 120s
-      
       # Always proceed to execution after generation
       transitions:
         - condition: always
@@ -82,8 +80,6 @@ spec:
         PYTHONPATH: "/workspace"
       
       workdir: "/workspace"
-      timeout: 60s
-      
       # Branch based on execution result
       transitions:
         - condition: exit_code_zero
@@ -138,8 +134,6 @@ spec:
           "suggestions": ["Specific improvement suggestions"],
           "verdict": "pass" | "refine" | "fail"
         }
-      
-      timeout: 60s
       
       # Branch based on judge verdict (thresholds: pass >=0.70, refine 0.30-0.70, fail <=0.30)
       transitions:

@@ -26,9 +26,6 @@ spec:
   execution:
     mode: "iterative"  # Enable refinement for creative quality
     max_iterations: 3
-    memory: true  # Learn poetic patterns over time
-  
-  security:
     network:
       mode: "none"  # No network needed — LLM routing is handled by the orchestrator
 

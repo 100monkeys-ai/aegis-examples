@@ -29,22 +29,20 @@ spec:
   execution:
     mode: "iterative"  # Enable refinement for code quality
     max_iterations: 5
-    memory: true  # Learn from coding patterns and corrections
-    
+
     validation:
-      semantic:
-        enabled: true
-        threshold: 0.80
-        prompt: |
-          Assess the code quality against professional standards:
-          {criteria}
-          
+      - type: semantic
+        judge_agent: "basic-judge"
+        criteria: |
+          Assess the code quality against professional standards.
+
           Check:
           - Code compiles/runs without errors
           - Proper error handling exists
           - Documentation is clear and complete
           - Unit tests cover key functionality
           - Follows language conventions and best practices
+        min_score: 0.80
   
   security:
     network:

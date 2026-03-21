@@ -29,22 +29,20 @@ spec:
   execution:
     mode: "iterative"  # Enable refinement for review thoroughness
     max_iterations: 3
-    memory: true  # Learn from review patterns
-    
+
     validation:
-      semantic:
-        enabled: true
-        threshold: 0.85  # High bar for review completeness
-        prompt: |
-          Validate the code review is thorough and actionable:
-          {criteria}
-          
+      - type: semantic
+        judge_agent: "basic-judge"
+        criteria: |
+          Validate the code review is thorough and actionable.
+
           Ensure:
           - All critical aspects reviewed (correctness, quality, safety, testing)
           - Issues identified with specific locations
           - Improvements are concrete and actionable
           - Overall assessment justified
           - Clear recommendation provided
+        min_score: 0.85  # High bar for review completeness
   
   security:
     network:

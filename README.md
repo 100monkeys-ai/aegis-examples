@@ -227,14 +227,13 @@ AEGIS agents are **manifest-only** — there is no agent-side Python script. The
      execution:
        mode: "iterative"
        max_iterations: 5
-       memory: false
 
        validation:
-         semantic:
-           enabled: true
-           threshold: 0.85
-           prompt: |
+         - type: semantic
+           judge_agent: "basic-judge"
+           criteria: |
              Assess whether the agent successfully completed the task.
+           min_score: 0.85
 
      security:
        network:
@@ -308,14 +307,13 @@ spec:
   execution:
     mode: "iterative"    # iterative = 100monkeys refinement loop
     max_iterations: 5
-    memory: false        # true = enable Cortex persistent memory
 
     validation:
-      semantic:
-        enabled: true
-        threshold: 0.85  # 0.0–1.0; score below this triggers refinement
-        prompt: |
+      - type: semantic
+        judge_agent: "basic-judge"
+        criteria: |
           Assess whether the agent successfully completed the task.
+        min_score: 0.85  # 0.0–1.0; score below this triggers refinement
 ```
 
 ### Security

@@ -29,22 +29,20 @@ spec:
   execution:
     mode: "iterative"  # Enable refinement for architecture quality
     max_iterations: 5
-    memory: true  # Learn from architectural patterns
-    
+
     validation:
-      semantic:
-        enabled: true
-        threshold: 0.85  # High bar for architecture quality
-        prompt: |
-          Evaluate the architecture design against these criteria:
-          {criteria}
-          
+      - type: semantic
+        judge_agent: "basic-judge"
+        criteria: |
+          Evaluate the architecture design against these criteria.
+
           Verify:
           - All required sections are present and complete
           - Design choices are well-justified
           - Component boundaries are clear
           - API contracts are well-defined
           - Technical choices are appropriate for requirements
+        min_score: 0.85  # High bar for architecture quality
   
   security:
     network:

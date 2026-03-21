@@ -15,7 +15,6 @@ spec:
     REQUEST_APPROVAL:
       kind: Human
       prompt: "Do you approve this deployment? (yes/no)"
-      timeout: 300s  # 5 minutes
       default_response: "no"
       transitions:
         - condition: input_equals_yes

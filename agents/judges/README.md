@@ -22,11 +22,23 @@ fn validate_output(output: &str) -> bool {
 **After (Declarative):**
 
 ```yaml
-# Judge agent manifest
-prompt: "Evaluate this code on a 0.0-1.0 scale..."
-validation:
-  type: json_schema
-  schema: { score: number, reasoning: string }
+apiVersion: 100monkeys.ai/v1
+kind: Agent
+metadata:
+  name: "basic-judge"
+  version: "1.0.0"
+spec:
+  runtime:
+    language: "python"
+    version: "3.11"
+  task:
+    instruction: "Evaluate this code on a 0.0-1.0 scale and return JSON only."
+  execution:
+    mode: "one-shot"
+    max_iterations: 1
+    validation:
+      - type: json_schema
+        schema: { score: number, reasoning: string }
 ```
 
 **Benefits:**
@@ -206,47 +218,63 @@ apiVersion: 100monkeys.ai/v1
 kind: Agent
 metadata:
   name: my-custom-judge
+  version: "1.0.0"
+  description: |
+    A custom judge agent that evaluates domain-specific outputs.
   labels:
     role: judge
 
 spec:
   runtime:
     language: python
-    timeout: 30s
-  
+    version: "3.11"
+    isolation: inherit
+
+  task:
+    instruction: |
+      You are a custom judge agent evaluating domain-specific outputs.
+      Score the result from 0.0 to 1.0 based on correctness, efficiency,
+      and security.
+
+      Return ONLY a single JSON object with score, confidence, reasoning,
+      and signals.
+
+    prompt_template: |
+      {{instruction}}
+
+      ## Execution Result to Evaluate:
+      {{input}}
+
+      Judge:
+
+  execution:
+    mode: one-shot
+    max_iterations: 1
+    validation:
+      - type: json_schema
+        schema:
+          type: object
+          required: [score, confidence, reasoning]
+          properties:
+            score:
+              type: number
+              minimum: 0.0
+              maximum: 1.0
+            confidence:
+              type: number
+              minimum: 0.0
+              maximum: 1.0
+            reasoning:
+              type: string
+              minLength: 10
+
   security:
     network:
-      mode: deny-all
+      mode: none
     resources:
-      max_iterations: 1
-  
-  prompt: |
-    You are evaluating {{domain}}-specific code.
-    
-    Score the output from 0.0 to 1.0 based on:
-    - Correctness
-    - Efficiency
-    - Security
-    
-    Output JSON: {"score": 0.85, "confidence": 0.90, "reasoning": "...", "signals": [...]}
-  
-  validation:
-    - type: json_schema
-      schema:
-        type: object
-        required: [score, confidence, reasoning]
-        properties:
-          score:
-            type: number
-            minimum: 0.0
-            maximum: 1.0
-          confidence:
-            type: number
-            minimum: 0.0
-            maximum: 1.0
-          reasoning:
-            type: string
-            minLength: 10
+      cpu: 1000
+      memory: "512Mi"
+      timeout: "30s"
 ```
 
 ### Step 2: Deploy Your Judge
