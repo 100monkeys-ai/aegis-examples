@@ -24,6 +24,9 @@ spec:
     # region: "us-west-2"  # Optional
     # tags: ["development"]  # Optional
 
+  # Caps `list_executions` results. Omitted values default to 1000.
+  max_execution_list_limit: 1000
+
   builtin_dispatchers:
     - name: "cmd.run"
       enabled: true
@@ -279,6 +282,8 @@ spec:
     worker_secret: "env:TEMPORAL_WORKER_SECRET"
     namespace: "default"
     task_queue: "aegis-agents"
+    # Limits startup retries when connecting the Temporal client.
+    max_connection_retries: 30
 
   # Keycloak IAM (ADR-041)
   # Defines trusted realms for JWT validation. The orchestrator validates Bearer

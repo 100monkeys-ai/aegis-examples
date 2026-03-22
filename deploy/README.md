@@ -57,6 +57,12 @@ The `ollama` service is configured for NVIDIA GPU passthrough. If you don't have
 
 If you want agents to use persistent or ephemeral volumes, you must set `AEGIS_NFS_HOST` in your `.env` to an address the Docker daemon on your host can reach. See `.env.example` for platform-specific values.
 
+## Node Config Notes
+
+The bundled `aegis-config.yaml` includes `spec.max_execution_list_limit: 1000`, which caps `list_executions` responses to a safe default size.
+
+It also sets `spec.temporal.max_connection_retries: 30`, which keeps Temporal client startup retries bounded.
+
 ## Stopping the Stack
 
 ```bash
