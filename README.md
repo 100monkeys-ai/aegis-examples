@@ -21,11 +21,13 @@ aegis init
 cd aegis-examples
 
 # Deploy and run the hello-world example
-aegis agent deploy ./agents/hello-world/agent.yaml
-aegis task execute hello-world \
+AGENT_ID=$(aegis agent deploy ./agents/hello-world/agent.yaml --output json | jq -r '.id')
+aegis task execute "$AGENT_ID" \
   --input '{"task": "Write a Python function that returns the Fibonacci sequence up to n."}' \
-  --follow
+  --output json
 ```
+
+For follow-up inspection, prefer `aegis task status --output json` and `aegis task list --output json` instead of scraping IDs or statuses from terminal text.
 
 See the [Getting Started guide](https://docs.aegis.ai/docs/getting-started) for a step-by-step walkthrough.
 

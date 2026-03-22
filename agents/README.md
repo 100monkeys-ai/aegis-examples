@@ -157,37 +157,37 @@ aegis task execute piglatin --input "How are you doing today my friend?"
 aegis daemon start
 
 # Deploy all agents
-aegis agent deploy ./agents/echo/agent.yaml
-aegis agent deploy ./agents/greeter/agent.yaml
-aegis agent deploy ./agents/coder/agent.yaml
-aegis agent deploy ./agents/debater/agent.yaml
-aegis agent deploy ./agents/poet/agent.yaml
-aegis agent deploy ./agents/piglatin/agent.yaml
+aegis agent deploy ./agents/echo/agent.yaml --output json
+aegis agent deploy ./agents/greeter/agent.yaml --output json
+aegis agent deploy ./agents/coder/agent.yaml --output json
+aegis agent deploy ./agents/debater/agent.yaml --output json
+aegis agent deploy ./agents/poet/agent.yaml --output json
+aegis agent deploy ./agents/piglatin/agent.yaml --output json
 
 # Verify deployment
-aegis agent list
+aegis agent list --output json
 ```
 
 ### Test All Demo Agents
 
 ```bash
 # Echo
-aegis task execute echo --input "Hello Daemon"
+aegis task execute echo --input "Hello Daemon" --output json
 
 # Greeter
-aegis task execute greeter --input "Jeshua"
+aegis task execute greeter --input "Jeshua" --output json
 
 # Coder
-aegis task execute coder --input "What are the advantages of using this language?"
+aegis task execute coder --input "What are the advantages of using this language?" --output json
 
 # Debater
-aegis task execute debater --input "Sushi is delicious."
+aegis task execute debater --input "Sushi is delicious." --output json
 
 # Poet
-aegis task execute poet --input "Tell me about the stars"
+aegis task execute poet --input "Tell me about the stars" --output json
 
 # Piglatin
-aegis task execute piglatin --input "How are you doing today my friend?"
+aegis task execute piglatin --input "How are you doing today my friend?" --output json
 ```
 
 ### View Logs
@@ -202,7 +202,7 @@ aegis agent logs coder
 aegis agent logs poet --follow
 
 # View all executions
-aegis task list
+aegis task list --output json
 ```
 
 ## Learning from Demo Agents
