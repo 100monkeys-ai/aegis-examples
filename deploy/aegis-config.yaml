@@ -217,7 +217,7 @@ spec:
     default_isolation: "docker"
     # Docker network for agent containers (only used when running in Docker)
     # Supports env:VAR_NAME syntax to read from environment variable
-    docker_network_mode: "env:AEGIS_DOCKER_NETWORK"
+    docker_network_mode: "env:AEGIS_CONTAINER_NETWORK"
     # Orchestrator URL for agent bootstrap script callbacks (used inside containers)
     # Supports env:VAR_NAME syntax to read from environment variable
     orchestrator_url: "env:AEGIS_ORCHESTRATOR_URL"
