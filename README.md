@@ -29,7 +29,7 @@ aegis task execute "$AGENT_ID" \
 
 For follow-up inspection, prefer `aegis task status --output json` and `aegis task list --output json` instead of scraping IDs or statuses from terminal text.
 
-See the [Getting Started guide](https://docs.aegis.ai/docs/getting-started) for a step-by-step walkthrough.
+See the [Getting Started guide](https://docs.100monkeys.ai/docs/getting-started) for a step-by-step walkthrough.
 
 ---
 
@@ -48,7 +48,7 @@ This repository contains ready-to-run example agents that showcase:
 
 **Location**: [`agents/hello-world/`](agents/hello-world/)
 
-The introductory agent. Writes a Python function, tests it, and iteratively refines it until all tests pass. Used in the [Getting Started guide](https://docs.aegis.ai/docs/getting-started).
+The introductory agent. Writes a Python function, tests it, and iteratively refines it until all tests pass. Used in the [Getting Started guide](https://docs.100monkeys.ai/docs/getting-started).
 
 **Features**:
 
@@ -151,7 +151,7 @@ aegis workflow start stateful-pipeline --input '{"task": "quantum entanglement",
 aegis workflow status <execution-id> --follow
 ```
 
-See the [Workflow Manifest Reference](https://docs.aegis.ai/docs/reference/workflow-manifest) and the [Building Workflows guide](https://docs.aegis.ai/docs/guides/building-workflows) for full documentation.
+See the [Workflow Manifest Reference](https://docs.100monkeys.ai/docs/reference/workflow-manifest) and the [Building Workflows guide](https://docs.100monkeys.ai/docs/guides/building-workflows) for full documentation.
 
 ---
 
