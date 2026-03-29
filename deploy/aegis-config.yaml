@@ -244,6 +244,10 @@ spec:
   # agent_skills:
   #   endpoint: "https://agentskills.io/api"
 
+  # Deploy vendored built-in agent and workflow templates on startup.
+  # Required for aegis.agent.generate and aegis.workflow.generate to function.
+  # deploy_builtins: false
+
   storage:
     backend: "local_host"
     local_host:
