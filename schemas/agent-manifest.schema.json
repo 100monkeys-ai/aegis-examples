@@ -119,14 +119,6 @@
         "task": {
           "type": "object",
           "properties": {
-            "agentskills": {
-              "type": "array",
-              "description": "Pre-built instruction packages",
-              "items": {
-                "type": "string",
-                "pattern": "^[a-z0-9-]+:[a-z0-9-]+$"
-              }
-            },
             "instruction": {
               "type": "string",
               "description": "High-level task guidance"
