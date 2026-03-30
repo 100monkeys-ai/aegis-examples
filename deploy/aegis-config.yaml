@@ -242,6 +242,12 @@ spec:
   # Required for aegis.agent.generate and aegis.workflow.generate to function.
   # deploy_builtins: false
 
+  # discovery:                                # Enterprise-only (ADR-075)
+  #   qdrant_url: "http://aegis-cortex:6334"
+  #   embedding_url: "http://aegis-cortex:50054"
+  #   deduplication_threshold: 0.85
+  #   backfill_on_startup: true
+
   storage:
     backend: "local_host"
     local_host:
