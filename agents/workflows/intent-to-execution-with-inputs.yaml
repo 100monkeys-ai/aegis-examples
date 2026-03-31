@@ -1,0 +1,107 @@
+# intent-to-execution-with-inputs.yaml — Intent-to-Execution with Typed Inputs (ADR-087)
+#
+# The motivating ADR-087 example. Passes typed scalar inputs alongside the
+# natural language intent so the generated code can reference them directly.
+# Inputs are serialised to JSON and injected into the execution context; the
+# generated code can read them from stdin or the AEGIS_INPUTS environment
+# variable, depending on the language runtime.
+#
+# FSM:
+#   SEED_INPUTS     (System/update_blackboard)  — bind inputs to named keys
+#     └──always──► EXECUTE_INTENT  (Agent)
+#   EXECUTE_INTENT
+#     └──on_success──► DONE
+#     └──on_failure──► FAILED
+#
+# Required workflow inputs:
+#   a  — First number (numeric scalar)
+#   b  — Second number (numeric scalar)
+#
+# Default inputs used when not provided on the CLI:
+#   a = 5, b = 7  →  expected stdout: "Result: 12"
+#
+# Usage:
+#   aegis workflow deploy ./agents/workflows/intent-to-execution-with-inputs.yaml
+#   aegis workflow start intent-to-execution-with-inputs --input '{"a": 5, "b": 7}'
+
+apiVersion: 100monkeys.ai/v1
+kind: Workflow
+
+metadata:
+  name: "intent-to-execution-with-inputs"
+  version: "1.0.0"
+  description: |-
+    Intent-to-Execution pipeline with typed scalar inputs (ADR-087 motivating
+    example). Demonstrates how to pass runtime values into a natural language
+    intent so the generated code can act on them rather than hardcoded literals.
+  labels:
+    category: "example"
+    pattern: "intent-to-execution"
+    adr: "087"
+
+spec:
+  # Default input values. Override at runtime with --input '{"a": …, "b": …}'.
+  context:
+    a: 5
+    b: 7
+
+  initial_state: SEED_INPUTS
+
+  states:
+
+    # ── 1. SEED_INPUTS (System) ───────────────────────────────────────────────
+    # Write the runtime inputs into the Blackboard under stable, semantic names
+    # so the agent input template below can reference them as {{blackboard.KEY}}.
+    # The `default` helper resolves CLI --input values first, then context defaults.
+    SEED_INPUTS:
+      kind: System
+      command: update_blackboard
+      env:
+        a: "{{default input.a workflow.context.a}}"
+        b: "{{default input.b workflow.context.b}}"
+      transitions:
+        - condition: always
+          target: EXECUTE_INTENT
+
+    # ── 2. EXECUTE_INTENT (Agent) ────────────────────────────────────────────
+    # Pass the intent and the typed inputs to the builtin pipeline.
+    #
+    # inputs  — JSON object of named scalar values available to the generated
+    #           code. The code-writing agent is instructed to read these from
+    #           the AEGIS_INPUTS environment variable (injected automatically
+    #           by the orchestrator before the container starts).
+    #
+    # Expected stdout for a=5, b=7:
+    #   Result: 12
+    EXECUTE_INTENT:
+      kind: Agent
+      agent: "builtin-intent-to-execution"
+      input: |-
+        intent: sum two numbers and print the result
+        language: python
+        inputs:
+          a: {{blackboard.a}}
+          b: {{blackboard.b}}
+      transitions:
+        - condition: on_success
+          target: DONE
+        - condition: on_failure
+          target: FAILED
+
+    # ── 3. DONE (System) ─────────────────────────────────────────────────────
+    # EXECUTE_INTENT.output contains the formatted natural language answer,
+    # e.g. "The sum of 5 and 7 is 12."
+    DONE:
+      kind: System
+      command: "echo"
+      env:
+        RESULT: "{{EXECUTE_INTENT.output}}"
+      transitions: []
+
+    # ── 4. FAILED (System) ───────────────────────────────────────────────────
+    FAILED:
+      kind: System
+      command: "echo"
+      env:
+        MESSAGE: "Intent execution failed"
+      transitions: []

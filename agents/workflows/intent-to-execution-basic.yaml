@@ -1,0 +1,87 @@
+# intent-to-execution-basic.yaml — Minimal Intent-to-Execution Example (ADR-087)
+#
+# The simplest possible Intent-to-Execution pipeline: a natural language intent
+# with no inputs, no persistent storage, and no expected output format. The
+# built-in `builtin-intent-to-execution` workflow handles everything — agent
+# discovery/generation, code generation, and execution.
+#
+# This workflow wraps the builtin in a single Agent state so you can observe the
+# full pipeline output and drive it from the workflow engine. To invoke the
+# builtin directly via MCP, use the `aegis.execute.intent` tool instead.
+#
+# FSM:
+#   EXECUTE_INTENT  (Agent)
+#     └──on_success──► DONE
+#     └──on_failure──► FAILED
+#
+# Required workflow inputs:
+#   (none) — intent is baked into the agent input below
+#
+# Usage:
+#   aegis workflow deploy ./agents/workflows/intent-to-execution-basic.yaml
+#   aegis workflow start intent-to-execution-basic
+
+apiVersion: 100monkeys.ai/v1
+kind: Workflow
+
+metadata:
+  name: "intent-to-execution-basic"
+  version: "1.0.0"
+  description: |-
+    Minimal Intent-to-Execution example. Converts a natural language intent into
+    runnable Python code, executes it in an isolated container, and surfaces the
+    stdout as the workflow result. No inputs, no persistent volume (ADR-087).
+  labels:
+    category: "example"
+    pattern: "intent-to-execution"
+    adr: "087"
+
+spec:
+  initial_state: EXECUTE_INTENT
+
+  states:
+
+    # ── 1. EXECUTE_INTENT (Agent) ────────────────────────────────────────────
+    # Invoke the builtin Intent-to-Execution pipeline agent.
+    #
+    # The `builtin-intent-to-execution` agent (registered at platform boot)
+    # runs three internal steps:
+    #   1. Discovery  — searches the ADR-075 Discovery Service for an existing
+    #                   code-writing agent that matches the intent + language
+    #   2. Generation — if no sufficient match exists (similarity < 0.85),
+    #                   generates a new single-shot code-writing agent on-demand
+    #   3. Execution  — runs the generated agent, captures stdout, and returns
+    #                   a natural language answer via the formatter agent
+    #
+    # intent    — Natural language description of what to compute.
+    # language  — Target execution language (python | javascript | bash | …).
+    #             Defaults to "python" when omitted.
+    EXECUTE_INTENT:
+      kind: Agent
+      agent: "builtin-intent-to-execution"
+      input: |-
+        intent: print the string Hello World to the console
+        language: python
+      transitions:
+        - condition: on_success
+          target: DONE
+        - condition: on_failure
+          target: FAILED
+
+    # ── 2. DONE (System) ─────────────────────────────────────────────────────
+    # Surface the pipeline result. EXECUTE_INTENT.output contains the formatted
+    # natural language answer produced by the intent-result-formatter-agent.
+    DONE:
+      kind: System
+      command: "echo"
+      env:
+        RESULT: "{{EXECUTE_INTENT.output}}"
+      transitions: []
+
+    # ── 3. FAILED (System) ───────────────────────────────────────────────────
+    FAILED:
+      kind: System
+      command: "echo"
+      env:
+        MESSAGE: "Intent execution failed"
+      transitions: []

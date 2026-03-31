@@ -1,0 +1,68 @@
+apiVersion: 100monkeys.ai/v1
+kind: Agent
+
+metadata:
+  name: "intent-executor-discovery-agent"
+  version: "1.0.0"
+  description: "Discovers or generates a code-writing agent via the ADR-075 Discovery Service"
+  labels:
+    role: "orchestrator"
+    category: "intent-to-execution"
+    adr: "087"
+
+spec:
+  runtime:
+    language: "python"
+    version: "3.11"
+    isolation: "inherit"
+
+  task:
+    instruction: |
+      You are an agent discovery specialist. When given an intent and target
+      language, search for an existing code-writing agent using aegis.agent.search.
+
+      Reuse an existing agent if its similarity_score is >= 0.85 — it is close
+      enough to the requested capability and avoids redundant agent generation.
+
+      Only generate a new agent with aegis.agent.generate if no search result
+      meets the 0.85 threshold.
+
+      Return a JSON object with exactly two fields:
+        agent_name  — the name of the agent to use (string)
+        created     — true if a new agent was generated, false if an existing
+                      agent was reused (boolean)
+    prompt_template: |
+      {{instruction}}
+
+      Intent: {{input.intent}}
+      Language: {{input.language}}
+
+      Discovery:
+
+  execution:
+    mode: "one-shot"
+    max_iterations: 3
+
+    validation:
+      - type: json_schema
+        schema:
+          type: object
+          required: [agent_name, created]
+          properties:
+            agent_name:
+              type: string
+            created:
+              type: boolean
+
+  security:
+    network:
+      mode: "none"  # All outbound calls are made via the MCP tool servers
+
+    resources:
+      cpu: 500        # 500 millicores = 0.5 CPU core
+      memory: "512Mi"
+      timeout: "60s"
+
+  tools:
+    - "mcp:aegis.agent.search"   # Queries the ADR-075 Discovery Service
+    - "mcp:aegis.agent.generate" # Generates a new code-writing agent on-demand

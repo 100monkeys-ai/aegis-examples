@@ -1,0 +1,46 @@
+apiVersion: 100monkeys.ai/v1
+kind: Agent
+
+metadata:
+  name: "intent-result-formatter-agent"
+  version: "1.0.0"
+  description: "Single-shot formatter — takes raw execution stdout and returns a one-sentence natural language answer"
+  labels:
+    role: "formatter"
+    category: "intent-to-execution"
+    adr: "087"
+
+spec:
+  runtime:
+    language: "python"
+    version: "3.11"
+    isolation: "inherit"
+
+  task:
+    instruction: |
+      You receive a user's original request and the raw stdout from executed code.
+      Return exactly one sentence stating the result. No code, no explanation.
+      Just the answer.
+    prompt_template: |
+      {{instruction}}
+
+      Original request: {{input.intent}}
+      Raw output:
+      ---
+      {{input.stdout}}
+      ---
+
+      Answer:
+
+  execution:
+    mode: "one-shot"
+    max_iterations: 1
+
+  security:
+    network:
+      mode: "none"  # No external access required — formatting is pure LLM inference
+
+    resources:
+      cpu: 250        # 250 millicores — lightweight formatter
+      memory: "256Mi"
+      timeout: "30s"

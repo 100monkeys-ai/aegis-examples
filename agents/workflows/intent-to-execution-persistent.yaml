@@ -1,0 +1,114 @@
+# intent-to-execution-persistent.yaml — Intent-to-Execution with Persistent Volume (ADR-087)
+#
+# Pro+ tier example. Mounts a pre-created persistent volume into the execution
+# container so the generated code can write output files that survive beyond
+# the workflow run. The volume must already exist — create it with:
+#
+#   aegis volume create --name my-results --size 1Gi
+#   aegis volume list   # copy the UUID shown in the ID column
+#
+# Then pass it at runtime:
+#
+#   aegis workflow start intent-to-execution-persistent \
+#     --input '{"volume_id": "<your-volume-uuid>"}'
+#
+# TIER REQUIREMENT: Persistent volumes require Pro tier or above.
+#   Free / Starter plans use ephemeral scratch space only. The workflow will
+#   fail at the EXECUTE_INTENT state if the volume_id resolves to a free-tier
+#   account with no persistent volume entitlement.
+#
+# FSM:
+#   SEED_INPUTS     (System/update_blackboard)
+#     └──always──► EXECUTE_INTENT  (Agent)
+#   EXECUTE_INTENT
+#     └──on_success──► DONE
+#     └──on_failure──► FAILED
+#
+# Required workflow inputs:
+#   volume_id  — UUID of a pre-created persistent volume (from aegis volume list)
+#
+# Usage:
+#   aegis workflow deploy ./agents/workflows/intent-to-execution-persistent.yaml
+#   aegis workflow start intent-to-execution-persistent \
+#     --input '{"volume_id": "00000000-0000-0000-0000-000000000000"}'
+
+apiVersion: 100monkeys.ai/v1
+kind: Workflow
+
+metadata:
+  name: "intent-to-execution-persistent"
+  version: "1.0.0"
+  description: |-
+    Intent-to-Execution pipeline that writes results to a persistent volume
+    (ADR-087, Pro+ tier). Demonstrates how to attach a pre-created volume to the
+    execution container so generated output files survive the workflow run.
+  labels:
+    category: "example"
+    pattern: "intent-to-execution"
+    tier: "pro"
+    adr: "087"
+  annotations:
+    # Replace with your actual persistent volume UUID before deploying.
+    default-volume-id: "00000000-0000-0000-0000-000000000000"
+
+spec:
+  initial_state: SEED_INPUTS
+
+  states:
+
+    # ── 1. SEED_INPUTS (System) ───────────────────────────────────────────────
+    # Bind the volume_id from the CLI --input into the Blackboard.
+    # There is no safe default here — the user MUST supply a real volume UUID.
+    SEED_INPUTS:
+      kind: System
+      command: update_blackboard
+      env:
+        # Replace with your persistent volume ID from `aegis volume list`.
+        volume_id: "{{input.volume_id}}"
+      transitions:
+        - condition: always
+          target: EXECUTE_INTENT
+
+    # ── 2. EXECUTE_INTENT (Agent) ────────────────────────────────────────────
+    # The generated code is instructed to write its output file to /results,
+    # which is backed by the persistent volume. After the workflow completes,
+    # the file is readable via `aegis volume read <volume_id> /results/…`.
+    #
+    # volume_id  — UUID of the pre-created persistent volume to mount at /results.
+    #              The orchestrator mounts it read-write before container start.
+    #
+    # Expected file written to the volume:
+    #   /results/multiplication_table.txt  — 10×10 multiplication table
+    EXECUTE_INTENT:
+      kind: Agent
+      agent: "builtin-intent-to-execution"
+      input: |-
+        intent: generate a multiplication table for numbers 1 through 10 and save it to a file
+        language: python
+        volume_id: {{blackboard.volume_id}}
+        output_path: /results/multiplication_table.txt
+      transitions:
+        - condition: on_success
+          target: DONE
+        - condition: on_failure
+          target: FAILED
+
+    # ── 3. DONE (System) ─────────────────────────────────────────────────────
+    # EXECUTE_INTENT.output contains the formatter agent's natural language
+    # confirmation, e.g. "The multiplication table has been saved to
+    # /results/multiplication_table.txt on volume <volume_id>."
+    DONE:
+      kind: System
+      command: "echo"
+      env:
+        RESULT: "{{EXECUTE_INTENT.output}}"
+        VOLUME_ID: "{{blackboard.volume_id}}"
+      transitions: []
+
+    # ── 4. FAILED (System) ───────────────────────────────────────────────────
+    FAILED:
+      kind: System
+      command: "echo"
+      env:
+        MESSAGE: "Intent execution failed"
+      transitions: []
