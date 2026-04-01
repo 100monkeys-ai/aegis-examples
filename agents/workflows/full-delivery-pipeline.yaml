@@ -75,9 +75,10 @@ spec:
   initial_state: GENERATE_CODE
 
   # ── Workflow-level volumes shared across all states (ADR-036) ──────────────
-  volumes:
-    - name: workspace
-      persistent: true
+  storage:
+    shared_volumes:
+      - name: workspace
+        storage_class: persistent
 
   states:
 

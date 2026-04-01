@@ -46,9 +46,10 @@ spec:
   initial_state: WRITE_CODE
 
   # Workspace volume shared between the agent and container steps.
-  volumes:
-    - name: workspace
-      persistent: false
+  storage:
+    shared_volumes:
+      - name: workspace
+        storage_class: ephemeral
 
   states:
 
