@@ -38,6 +38,15 @@ metadata:
     category: "example"
     pattern: "intent-to-execution"
     adr: "087"
+  input_schema:
+    type: object
+    properties:
+      a:
+        type: number
+        description: First number
+      b:
+        type: number
+        description: Second number
 
 spec:
   # Default input values. Override at runtime with --input '{"a": …, "b": …}'.

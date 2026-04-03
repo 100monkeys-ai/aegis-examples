@@ -1,0 +1,90 @@
+apiVersion: 100monkeys.ai/v1
+kind: Agent
+
+metadata:
+  name: "hello-world"
+  version: "1.0.0"
+  description: "Writes a Python function, tests it, and iteratively refines it until all tests pass."
+  labels:
+    role: "worker"
+    category: "example"
+  tags:
+    - code-generation
+    - python
+    - getting-started
+
+spec:
+  runtime:
+    language: "python"
+    version: "3.11"
+    isolation: inherit
+
+  input_schema:
+    type: object
+    properties:
+      task:
+        type: string
+        description: Description of the Python function or program to write
+    required:
+      - task
+
+  task:
+    instruction: |
+      Write a Python solution to the given task.
+      Save the solution to /workspace/solution.py.
+      Write tests to /workspace/test_solution.py and run them to verify correctness.
+    prompt_template: |
+      {{instruction}}
+
+      Task: {{input}}
+      {{#if previous_error}}
+      Previous attempt failed: {{previous_error}}
+      {{/if}}
+      Assistant:
+
+  security:
+    network:
+      mode: none
+    filesystem:
+      read:
+        - /workspace
+      write:
+        - /workspace
+    resources:
+      cpu: 500
+      memory: "512Mi"
+      timeout: "120s"
+
+  volumes:
+    - name: workspace
+      storage_class: ephemeral
+      mount_path: /workspace
+      access_mode: read-write
+      ttl_hours: 1
+      size_limit: "1Gi"
+
+  execution:
+    mode: iterative
+    max_iterations: 5
+    memory: false
+    validation:
+      - type: exit_code
+        expected: 0
+      - type: semantic
+        judge_agent: "output-judge"
+        criteria: "The solution is correct, well-structured, and all tests pass."
+        min_score: 0.85
+        min_confidence: 0.70
+
+  tools:
+    - name: filesystem
+      server: "mcp:filesystem"
+      config:
+        allowed_paths:
+          - /workspace
+        access_mode: read-write
+    - name: cmd
+      executor: "builtin:cmd"
+      config:
+        allowed_commands:
+          - python
