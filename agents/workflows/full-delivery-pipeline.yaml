@@ -70,6 +70,26 @@ metadata:
     category: "example"
     pattern: "cicd"
     adr: "050"
+  input_schema:
+    type: object
+    properties:
+      requirements:
+        type: string
+        description: Natural language description of the feature to implement
+      registry:
+        type: string
+        description: "Container registry host (default: ghcr.io/myorg)"
+      app_name:
+        type: string
+        description: "Application name for the image tag (default: my-app)"
+      version:
+        type: string
+        description: "Image version tag (default: latest)"
+      docker_host:
+        type: string
+        description: "Docker daemon address (default: unix:///var/run/docker.sock)"
+    required:
+      - requirements
 
 spec:
   initial_state: GENERATE_CODE
