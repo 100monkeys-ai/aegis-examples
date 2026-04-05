@@ -11,6 +11,7 @@ metadata:
     function: "implementation"
 
 spec:
+  type: user
   runtime:
     language: "python"
     version: "3.10"

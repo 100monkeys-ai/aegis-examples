@@ -27,6 +27,7 @@ metadata:
       Output: {"score": 0.95, "reasoning": "Correct output, minor style issue"}
 
 spec:
+  type: user
   # Runtime configuration
   runtime:
     language: python
