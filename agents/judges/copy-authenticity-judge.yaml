@@ -32,7 +32,6 @@ metadata:
     output_schema: "GradientResult — { score, confidence, reasoning, signals }"
 
 spec:
-  type: user
   runtime:
     language: "python"
     version: "3.11"

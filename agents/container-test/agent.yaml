@@ -11,7 +11,6 @@ metadata:
     specialty: "containerization"
 
 spec:
-  type: user
   runtime:
     language: "python"
     version: "3.11"
