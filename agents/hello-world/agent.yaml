@@ -8,11 +8,6 @@ metadata:
   labels:
     role: "worker"
     category: "example"
-  tags:
-    - code-generation
-    - python
-    - getting-started
-
 spec:
   runtime:
     language: "python"
