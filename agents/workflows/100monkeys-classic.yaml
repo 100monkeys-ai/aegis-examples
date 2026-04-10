@@ -23,6 +23,7 @@ spec:
 
   # Start with code generation
   initial_state: GENERATE
+  max_total_transitions: 50
 
   states:
     # ========================================================================
@@ -31,7 +32,8 @@ spec:
     # ========================================================================
     GENERATE:
       kind: Agent
-      
+      max_state_visits: 10
+
       # Agent ID will be passed as workflow parameter
       agent: "{{workflow.agent_id}}"
       
@@ -161,7 +163,8 @@ spec:
     # ========================================================================
     REFINE:
       kind: System
-      
+      max_state_visits: 10
+
       command: "update_blackboard"
       
       # Update blackboard state for next iteration

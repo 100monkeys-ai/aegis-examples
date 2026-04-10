@@ -93,6 +93,7 @@ metadata:
 
 spec:
   initial_state: GENERATE_CODE
+  max_total_transitions: 40
 
   # ── Workflow-level volumes shared across all states (ADR-036) ──────────────
   storage:
@@ -107,6 +108,7 @@ spec:
     # Code quality judge validates the output via gradient scoring.
     GENERATE_CODE:
       kind: Agent
+      max_state_visits: 3
       agent: coder-v2
       input: |
         Implement a REST API endpoint for user registration.
@@ -129,6 +131,7 @@ spec:
     # Retry once on transient image-pull failures.
     BUILD:
       kind: ContainerRun
+      max_state_visits: 5
       name: "Compile and Build"
       image: "rust:1.75-alpine"
       command: ["cargo", "build", "--release"]
@@ -156,6 +159,7 @@ spec:
     # Coder agent reads build stderr from the blackboard and fixes compile errors.
     FIX_BUILD_ERRORS:
       kind: Agent
+      max_state_visits: 3
       agent: coder-v2
       input: |
         The build failed with the following errors:
@@ -216,6 +220,7 @@ spec:
     # Coder agent reads individual parallel step outputs from the blackboard.
     FIX_TEST_ERRORS:
       kind: Agent
+      max_state_visits: 3
       agent: coder-v2
       input: |
         Tests or linting failed. Results:
@@ -258,6 +263,7 @@ spec:
     # Coder agent addresses security and architecture review feedback.
     FIX_REVIEW_ISSUES:
       kind: Agent
+      max_state_visits: 3
       agent: coder-v2
       input: |
         Security and architecture review feedback:
