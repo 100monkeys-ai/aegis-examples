@@ -35,6 +35,16 @@ metadata:
     category: "example"
     pattern: "intent-to-execution"
     adr: "087"
+  output_schema:
+    type: object
+    properties:
+      result:
+        type: string
+        description: Formatted natural language answer from the intent execution
+    required:
+      - result
+  output_template:
+    result: "{{EXECUTE_INTENT.output}}"
 
 spec:
   initial_state: EXECUTE_INTENT

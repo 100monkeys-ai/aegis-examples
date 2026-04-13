@@ -50,6 +50,21 @@ metadata:
   annotations:
     # Replace with your actual persistent volume UUID before deploying.
     default-volume-id: "00000000-0000-0000-0000-000000000000"
+  output_schema:
+    type: object
+    properties:
+      result:
+        type: string
+        description: Formatted natural language confirmation of the file written to the volume
+      volume_id:
+        type: string
+        description: UUID of the persistent volume where output was written
+    required:
+      - result
+      - volume_id
+  output_template:
+    result: "{{EXECUTE_INTENT.output}}"
+    volume_id: "{{blackboard.volume_id}}"
 
 spec:
   initial_state: SEED_INPUTS

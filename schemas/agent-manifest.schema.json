@@ -71,6 +71,25 @@
         "runtime"
       ],
       "properties": {
+        "output_schema": {
+          "type": "object",
+          "description": "JSON Schema (draft-07 object subset) declaring the shape of the agent's output",
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "object"
+            },
+            "properties": {
+              "type": "object"
+            },
+            "required": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          }
+        },
         "runtime": {
           "type": "object",
           "required": [

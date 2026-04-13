@@ -90,6 +90,20 @@ metadata:
         description: "Docker daemon address (default: unix:///var/run/docker.sock)"
     required:
       - requirements
+  output_schema:
+    type: object
+    properties:
+      status:
+        type: string
+        description: "Pipeline outcome: success or failure"
+      image:
+        type: string
+        description: Full container image reference that was pushed to the registry
+    required:
+      - status
+  output_template:
+    status: "{{DEPLOY.status}}"
+    image: "{{blackboard.registry}}/{{blackboard.app_name}}:{{blackboard.version}}"
 
 spec:
   initial_state: GENERATE_CODE

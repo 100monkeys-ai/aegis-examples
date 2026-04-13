@@ -41,6 +41,24 @@ metadata:
     category: "example"
     pattern: "cicd"
     adr: "050"
+  output_schema:
+    type: object
+    properties:
+      status:
+        type: string
+        description: "Outcome of the check phase: success or failure"
+      test_output:
+        type: string
+        description: stdout from the test container step
+      fmt_output:
+        type: string
+        description: stdout from the format check container step
+    required:
+      - status
+  output_template:
+    status: "{{CHECK.status}}"
+    test_output: "{{CHECK.output.test}}"
+    fmt_output: "{{CHECK.output.fmt}}"
 
 spec:
   initial_state: WRITE_CODE

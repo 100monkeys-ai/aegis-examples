@@ -47,6 +47,16 @@ metadata:
       b:
         type: number
         description: Second number
+  output_schema:
+    type: object
+    properties:
+      result:
+        type: string
+        description: Formatted natural language answer from the intent execution
+    required:
+      - result
+  output_template:
+    result: "{{EXECUTE_INTENT.output}}"
 
 spec:
   # Default input values. Override at runtime with --input '{"a": …, "b": …}'.

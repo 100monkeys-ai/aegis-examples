@@ -47,6 +47,26 @@ metadata:
   labels:
     category: "example"
     pattern: "blackboard-accumulation"
+  output_schema:
+    type: object
+    properties:
+      topic:
+        type: string
+        description: The researched topic
+      summary:
+        type: string
+        description: The final summary produced by the summariser agent
+      summary_score:
+        type: number
+        description: Validation score of the summary (0.0-1.0)
+    required:
+      - topic
+      - summary
+      - summary_score
+  output_template:
+    topic: "{{blackboard.topic}}"
+    summary: "{{SUMMARISE.output}}"
+    summary_score: "{{SUMMARISE.score}}"
 
 spec:
   # ── 1. SEEDING ──────────────────────────────────────────────────────────────

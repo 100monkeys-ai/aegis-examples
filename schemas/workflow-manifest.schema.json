@@ -60,6 +60,51 @@
                     "additionalProperties": {
                         "type": "string"
                     }
+                },
+                "input_schema": {
+                    "type": "object",
+                    "description": "JSON Schema (draft-07 object subset) declaring the shape of the workflow's expected input",
+                    "properties": {
+                        "type": {
+                            "type": "string",
+                            "const": "object"
+                        },
+                        "properties": {
+                            "type": "object"
+                        },
+                        "required": {
+                            "type": "array",
+                            "items": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                },
+                "output_schema": {
+                    "type": "object",
+                    "description": "JSON Schema (draft-07 object subset) declaring the shape of the workflow's output",
+                    "properties": {
+                        "type": {
+                            "type": "string",
+                            "const": "object"
+                        },
+                        "properties": {
+                            "type": "object"
+                        },
+                        "required": {
+                            "type": "array",
+                            "items": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                },
+                "output_template": {
+                    "type": "object",
+                    "description": "Object where each leaf value is a Handlebars expression evaluated against the final blackboard at workflow completion",
+                    "additionalProperties": {
+                        "type": "string"
+                    }
                 }
             }
         },

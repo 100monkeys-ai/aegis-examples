@@ -5,6 +5,16 @@ metadata:
   name: "echo-test"
   version: "1.0.0"
   description: "Simple echo workflow for testing"
+  output_schema:
+    type: object
+    properties:
+      message:
+        type: string
+        description: The echoed message from the workflow context
+    required:
+      - message
+  output_template:
+    message: "{{workflow.context.message}}"
 
 spec:
   context:

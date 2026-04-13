@@ -14,6 +14,31 @@ metadata:
     category: "iterative"
     pattern: "generate-execute-validate-refine"
     stability: "stable"
+  output_schema:
+    type: object
+    properties:
+      final_code:
+        type: string
+        description: The generated code that passed validation
+      final_output:
+        type: string
+        description: stdout from the successful execution
+      validation_score:
+        type: number
+        description: Score from the validation judge (0.0-1.0)
+      iterations:
+        type: integer
+        description: Number of refinement iterations completed
+    required:
+      - final_code
+      - final_output
+      - validation_score
+      - iterations
+  output_template:
+    final_code: "{{GENERATE.output}}"
+    final_output: "{{EXECUTE.output.stdout}}"
+    validation_score: "{{VALIDATE.output.score}}"
+    iterations: "{{blackboard.iteration_number}}"
 
 spec:
   # Global context available to all states

@@ -5,6 +5,29 @@ metadata:
   name: "multi-judge-best-of-n"
   version: "1.0.0"
   description: "Multi-judge consensus using best-of-N strategy (top judges win)"
+  output_schema:
+    type: object
+    properties:
+      grade:
+        type: string
+        description: "Letter grade assigned (A, B, C, or F)"
+      score:
+        type: number
+        description: "Consensus score from the top-N judges (0.0-1.0)"
+      top_n:
+        type: integer
+        description: Number of top judges used for the average
+      total_judges:
+        type: integer
+        description: Total number of judges that participated
+    required:
+      - grade
+      - score
+  output_template:
+    grade: "{{GRADE_ESSAY.consensus.metadata.grade}}"
+    score: "{{GRADE_ESSAY.consensus.score}}"
+    top_n: "{{GRADE_ESSAY.consensus.metadata.n}}"
+    total_judges: "{{GRADE_ESSAY.consensus.metadata.total_judges}}"
 
 spec:
   context:

@@ -5,6 +5,29 @@ metadata:
   name: "multi-judge-majority"
   version: "1.0.0"
   description: "Multi-judge consensus using majority vote strategy"
+  output_schema:
+    type: object
+    properties:
+      verdict:
+        type: string
+        description: "Vote outcome: approved, rejected, or tie"
+      score:
+        type: number
+        description: "Final consensus score (1.0 = majority approved, 0.0 = majority rejected, 0.5 = tie)"
+      pass_votes:
+        type: integer
+        description: Number of judges that voted to approve
+      fail_votes:
+        type: integer
+        description: Number of judges that voted to reject
+    required:
+      - verdict
+      - score
+  output_template:
+    verdict: "{{APPROVAL_VOTE.consensus.metadata.verdict}}"
+    score: "{{APPROVAL_VOTE.consensus.score}}"
+    pass_votes: "{{APPROVAL_VOTE.consensus.metadata.pass_votes}}"
+    fail_votes: "{{APPROVAL_VOTE.consensus.metadata.fail_votes}}"
 
 spec:
   context:

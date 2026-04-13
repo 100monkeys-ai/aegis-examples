@@ -5,6 +5,16 @@ metadata:
   name: "agent-test"
   version: "1.0.0"
   description: "Test agent execution"
+  output_schema:
+    type: object
+    properties:
+      agent_output:
+        type: string
+        description: Output from the greeter agent execution
+    required:
+      - agent_output
+  output_template:
+    agent_output: "{{RUN_AGENT.output}}"
 
 spec:
   context: {}
