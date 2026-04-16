@@ -85,6 +85,7 @@ spec:
     - name: "web.search"
       enabled: true
       description: "Performs an internet search query."
+      # api_key: "env:BRAVE_SEARCH_API_KEY"  # Brave Search API — https://brave.com/search/api/
       capabilities:
         - name: "web.search"
           skip_judge: true   # read-only external lookup — skip inner-loop judge overhead
