@@ -524,7 +524,7 @@
           "description": "MCP tools the agent can use",
           "items": {
             "type": "string",
-            "pattern": "^(mcp|custom):[a-z0-9-]+$"
+            "pattern": "^((mcp|custom):[a-z0-9-]+|[a-z0-9][a-z0-9-]*(\\.[a-z0-9_]+)+)$"
           }
         },
         "env": {
@@ -536,30 +536,36 @@
             }
           }
         },
-        "schedule": {
+        "default_schedule": {
           "type": "object",
+          "description": "A recommended timing for a schedule of this agent: offered, pre-filled, when a person makes one, and never acted on by itself.",
+          "required": [
+            "cron"
+          ],
+          "additionalProperties": false,
           "properties": {
-            "type": {
-              "type": "string",
-              "enum": [
-                "cron",
-                "interval",
-                "manual"
-              ]
-            },
             "cron": {
               "type": "string",
-              "description": "Cron expression"
+              "description": "Five fields: minute, hour, day of month, month and day of week.",
+              "pattern": "^\\s*\\S+(\\s+\\S+){4}\\s*$"
             },
             "timezone": {
               "type": "string",
-              "description": "Timezone for schedule"
+              "description": "A time zone name such as Europe/Berlin.",
+              "default": "UTC"
             },
-            "enabled": {
-              "type": "boolean",
-              "default": true
+            "jitter_seconds": {
+              "type": "integer",
+              "description": "Up to this many seconds of random delay before each run.",
+              "minimum": 0,
+              "maximum": 3600,
+              "default": 0
             }
           }
+        },
+        "schedule": {
+          "description": "'spec.schedule' is not read; make a schedule for this agent or workflow, and use 'spec.default_schedule' to suggest one.",
+          "not": {}
         },
         "context": {
           "type": "array",

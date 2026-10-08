@@ -1,0 +1,235 @@
+# Copyright (c) 2026 100monkeys.ai
+# SPDX-License-Identifier: AGPL-3.0
+#
+# Sorts a person's inbox every half hour when a schedule runs it: up to 25
+# untriaged threads of the last 7 days, oldest first, each labelled with its
+# category, flagged when it needs the person, kept on its own page, and
+# answered by a judged reply that waits for the person's approval.
+#
+# FSM:
+#   SEED -> RECONCILE -> COLLECT -> CLASSIFY -> RECORD -> DRAFT -> SEND -> DONE
+#   CLASSIFY on failure -> FAILED
+#   DRAFT on failure    -> REJECTED -> DONE
+
+apiVersion: 100monkeys.ai/v1
+kind: Workflow
+
+metadata:
+  name: email-inbox-triage
+  version: "1.0.0"
+  description: |-
+    Sorts up to 25 untriaged inbox threads of the last 7 days: labels each
+    zaru/triaged and zaru/<category>, flags those that need a reply, keeps a
+    page per thread, and drafts a checked reply that waits for the person's
+    approval before it is sent.
+  labels:
+    category: email
+  input_schema:
+    type: object
+    properties:
+      mailbox:
+        type: string
+        description: The address of the connected mailbox to sort.
+      notes_workspace:
+        type: string
+        description: The Nuclear Notes workspace that holds the thread pages.
+      page_prefix:
+        type: string
+        description: The path the thread and target pages live under. Default outreach.
+      evidence_paths:
+        type: array
+        items:
+          type: string
+        description: The pages a reply may take facts from.
+      draft_only:
+        type: boolean
+        description: Save each checked reply in the Drafts folder instead of sending it. Default false.
+    required:
+      - mailbox
+      - notes_workspace
+
+spec:
+  default_schedule:
+    cron: "*/30 * * * *"
+    timezone: "UTC"
+    jitter_seconds: 300
+
+  context:
+    page_prefix: "outreach"
+    draft_only: false
+    evidence_paths: []
+
+  initial_state: SEED
+
+  states:
+    SEED:
+      kind: System
+      command: update_blackboard
+      env:
+        mailbox: "{{input.mailbox}}"
+        notes_workspace: "{{input.notes_workspace}}"
+        page_prefix: "{{default input.page_prefix workflow.context.page_prefix}}"
+        draft_only: "{{default input.draft_only workflow.context.draft_only}}"
+        evidence_paths: "{{{json (default input.evidence_paths workflow.context.evidence_paths)}}}"
+      transitions:
+        - condition: always
+          target: RECONCILE
+
+    RECONCILE:
+      kind: Agent
+      agent: email-loop-clerk
+      input: |-
+        Procedure: reconcile the pages waiting on an approval.
+        1. With nuclear-notes.pages.list, list the pages under
+           <page_prefix>/threads/<mailbox>/ and <page_prefix>/targets/ whose
+           metadata state ends in _pending_approval, with their metadata.
+        2. For each, call aegis.approval.status with its approval_id.
+        3. On approved_once, approved_always or auto_allowed: record the sent
+           message's Message-ID in message_ids, set last_outbound_at, and move
+           the state on: reply_pending_approval to reply_sent;
+           pitch_pending_approval to sent_1; followup_pending_approval to
+           sent_2 when message_ids now holds two sent messages, else sent_3.
+           On denied or auto_denied: draft_denied. On expired:
+           approval_expired. Still approval_pending: leave it.
+        4. Add one dated line per change to the page's body.
+        Answer {"reconciled": [{"path": "...", "from": "...", "to": "..."}]}.
+        Data: {"mailbox": "{{blackboard.mailbox}}",
+        "notes_workspace": "{{blackboard.notes_workspace}}",
+        "page_prefix": "{{blackboard.page_prefix}}"}
+      transitions:
+        - condition: on_success
+          target: COLLECT
+        - condition: on_failure
+          target: COLLECT
+
+    COLLECT:
+      kind: Agent
+      agent: email-loop-clerk
+      input: |-
+        Procedure: choose the threads to sort, and unflag answered ones.
+        1. Call mail.list on the inbox with since the last 7 days and limit
+           50.
+        2. For each listed thread whose labels hold zaru/triaged and that is
+           flagged: read it with mail.read; if its newest message was sent
+           from <mailbox>, unflag it with mail.label (flagged false).
+        3. Drop every thread whose labels hold zaru/triaged. Of the rest, keep
+           the 25 with the oldest latest date.
+        Answer {"threads": [{"thread_id": "...", "subject": "...",
+        "participants": ["..."], "latest_date": "..."}], "unflagged": ["..."]},
+        oldest first.
+        Data: {"mailbox": "{{blackboard.mailbox}}"}
+      transitions:
+        - condition: on_success
+          target: CLASSIFY
+        - condition: on_failure
+          target: FAILED
+
+    CLASSIFY:
+      kind: Agent
+      agent: mail-triage-agent
+      input: "{{{json COLLECT.output}}}"
+      transitions:
+        - condition: on_success
+          target: RECORD
+        - condition: on_failure
+          target: FAILED
+
+    RECORD:
+      kind: Agent
+      agent: email-loop-clerk
+      input: |-
+        Procedure: label, flag and record each sorted thread.
+        For each entry of the sorting below:
+        1. mail.label: add zaru/triaged and zaru/<category>; when category is
+           reply_to_outreach, sales_lead, partner or support and needs_reply
+           is true, also flag it (flagged true). If mail.label refuses, say
+           so in "refused" with its sentence and go on.
+        2. mail.read the thread, then create its thread page, or update it
+           when one exists: metadata state (needs_reply when it needs a
+           reply, else triaged; replied when a page of an outreach target
+           points to this thread and the counterpart wrote), mailbox,
+           thread_id, counterpart, category, last_inbound_at,
+           last_outbound_at; one dated body line per message not yet on the
+           page. When the thread belongs to a target page and the
+           counterpart asks not to be written to again, set that target
+           page's state to opted_out.
+        Answer {"needs_reply": [{"thread_id": "...", "category": "...",
+        "summary": "..."}], "recorded": ["<page path>"], "refused": []}.
+        Sorting: {{{json CLASSIFY.output}}}
+        Data: {"mailbox": "{{blackboard.mailbox}}",
+        "notes_workspace": "{{blackboard.notes_workspace}}",
+        "page_prefix": "{{blackboard.page_prefix}}"}
+      transitions:
+        - condition: on_success
+          target: DRAFT
+        - condition: on_failure
+          target: FAILED
+
+    DRAFT:
+      kind: Agent
+      agent: mail-reply-drafter
+      input: |-
+        {"mailbox": "{{blackboard.mailbox}}",
+        "notes_workspace": "{{blackboard.notes_workspace}}",
+        "evidence_paths": {{{blackboard.evidence_paths}}},
+        "threads": {{{json RECORD.output}}}}
+      transitions:
+        - condition: on_success
+          target: SEND
+        - condition: on_failure
+          target: REJECTED
+
+    SEND:
+      kind: Agent
+      agent: email-loop-clerk
+      input: |-
+        Procedure: hand each checked reply to the mailbox.
+        For each reply below, exactly as written:
+        - when draft_only is true, save it with mail.draft in its thread
+          (to, cc, subject, body) and set the thread page's state to drafted;
+        - otherwise send it with mail.reply in its thread (to, cc, subject,
+          body); it answers approval_pending with an approval_id: set the
+          thread page's state to reply_pending_approval and its approval_id.
+        Add a dated line for each to its thread page.
+        Answer {"handed": [{"thread_id": "...", "state": "...",
+        "approval_id": "..."}]}.
+        Replies: {{{json DRAFT.output}}}
+        Data: {"mailbox": "{{blackboard.mailbox}}",
+        "notes_workspace": "{{blackboard.notes_workspace}}",
+        "page_prefix": "{{blackboard.page_prefix}}",
+        "draft_only": {{blackboard.draft_only}}}
+      transitions:
+        - condition: on_success
+          target: DONE
+        - condition: on_failure
+          target: FAILED
+
+    REJECTED:
+      kind: Agent
+      agent: email-loop-clerk
+      input: |-
+        Procedure: record replies that never passed their check.
+        For each thread below, set its thread page's state to
+        draft_rejected_by_judge with a dated line; send and save nothing.
+        Answer {"rejected": ["<thread_id>"]}.
+        Threads: {{{json RECORD.output}}}
+        Data: {"mailbox": "{{blackboard.mailbox}}",
+        "notes_workspace": "{{blackboard.notes_workspace}}",
+        "page_prefix": "{{blackboard.page_prefix}}"}
+      transitions:
+        - condition: always
+          target: DONE
+
+    DONE:
+      kind: System
+      command: "echo"
+      env:
+        RESULT: "Inbox sorted"
+      transitions: []
+
+    FAILED:
+      kind: System
+      command: "echo"
+      env:
+        MESSAGE: "Inbox sorting stopped before it finished"
+      transitions: []

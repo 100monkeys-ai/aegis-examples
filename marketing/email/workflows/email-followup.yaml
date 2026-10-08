@@ -1,0 +1,196 @@
+# Copyright (c) 2026 100monkeys.ai
+# SPDX-License-Identifier: AGPL-3.0
+#
+# Follows up, each weekday when a schedule runs it, on outreach that has had
+# no answer for 4 days: at most two follow-ups per thread, each checked and
+# sent only after the person approves it; a thread still unanswered 4 days
+# after the second follow-up is closed.
+#
+# FSM:
+#   SEED -> RECONCILE -> SELECT -> DRAFT -> SEND -> DONE
+#   DRAFT on failure -> REJECTED -> DONE
+
+apiVersion: 100monkeys.ai/v1
+kind: Workflow
+
+metadata:
+  name: email-followup
+  version: "1.0.0"
+  description: |-
+    Writes a checked follow-up in the thread of each target in state sent_1
+    or sent_2 whose last email is at least 4 days old with no answer since,
+    and closes those still unanswered 4 days after sent_3; each send waits
+    for the person's approval.
+  labels:
+    category: email
+  input_schema:
+    type: object
+    properties:
+      mailbox:
+        type: string
+        description: The address of the connected mailbox to send from.
+      notes_workspace:
+        type: string
+        description: The Nuclear Notes workspace that holds the target and thread pages.
+      page_prefix:
+        type: string
+        description: The path the thread and target pages live under. Default outreach.
+      opt_out_sentence:
+        type: string
+        description: The sentence each follow-up ends with that lets the reader say no to further email.
+      postal_address:
+        type: string
+        description: The sender's postal address, which each follow-up carries.
+    required:
+      - mailbox
+      - notes_workspace
+      - opt_out_sentence
+      - postal_address
+
+spec:
+  default_schedule:
+    cron: "0 16 * * 1-5"
+    timezone: "UTC"
+    jitter_seconds: 1800
+
+  context:
+    page_prefix: "outreach"
+
+  initial_state: SEED
+
+  states:
+    SEED:
+      kind: System
+      command: update_blackboard
+      env:
+        mailbox: "{{input.mailbox}}"
+        notes_workspace: "{{input.notes_workspace}}"
+        page_prefix: "{{default input.page_prefix workflow.context.page_prefix}}"
+        opt_out_sentence: "{{{json input.opt_out_sentence}}}"
+        postal_address: "{{{json input.postal_address}}}"
+      transitions:
+        - condition: always
+          target: RECONCILE
+
+    RECONCILE:
+      kind: Agent
+      agent: email-loop-clerk
+      input: |-
+        Procedure: reconcile the pages waiting on an approval.
+        1. With nuclear-notes.pages.list, list the pages under
+           <page_prefix>/threads/<mailbox>/ and <page_prefix>/targets/ whose
+           metadata state ends in _pending_approval, with their metadata.
+        2. For each, call aegis.approval.status with its approval_id.
+        3. On approved_once, approved_always or auto_allowed: record the sent
+           message's Message-ID in message_ids, set last_outbound_at, and move
+           the state on: reply_pending_approval to reply_sent;
+           pitch_pending_approval to sent_1, creating the thread page of the
+           sent message and naming it in the target's thread_page;
+           followup_pending_approval to sent_2 when message_ids now holds two
+           sent messages, else sent_3. On denied or auto_denied:
+           draft_denied. On expired: approval_expired. Still
+           approval_pending: leave it.
+        4. Add one dated line per change to the page's body.
+        Answer {"reconciled": [{"path": "...", "from": "...", "to": "..."}]}.
+        Data: {"mailbox": "{{blackboard.mailbox}}",
+        "notes_workspace": "{{blackboard.notes_workspace}}",
+        "page_prefix": "{{blackboard.page_prefix}}"}
+      transitions:
+        - condition: on_success
+          target: SELECT
+        - condition: on_failure
+          target: SELECT
+
+    SELECT:
+      kind: Agent
+      agent: email-loop-clerk
+      input: |-
+        Procedure: choose the targets to follow up, and close the silent.
+        1. With nuclear-notes.pages.list, list the pages under
+           <page_prefix>/targets/ whose metadata state is sent_1, sent_2 or
+           sent_3, and read each one's thread page.
+        2. A target whose thread page shows an inbound message after its last
+           outbound one: set its state to replied, with a dated line.
+        3. A target in sent_3 whose last outbound message is at least 4 days
+           old with no inbound since: set its state to closed_no_reply, with
+           a dated line.
+        4. Keep each target in sent_1 or sent_2 whose last outbound message
+           is at least 4 days old with no inbound since.
+        Answer {"targets": [{"target_page": "...", "thread_page": "...",
+        "thread_id": "..."}], "closed": ["..."], "replied": ["..."]}.
+        Data: {"mailbox": "{{blackboard.mailbox}}",
+        "notes_workspace": "{{blackboard.notes_workspace}}",
+        "page_prefix": "{{blackboard.page_prefix}}"}
+      transitions:
+        - condition: on_success
+          target: DRAFT
+        - condition: on_failure
+          target: FAILED
+
+    DRAFT:
+      kind: Agent
+      agent: outreach-drafter
+      input: |-
+        {"kind": "followup",
+        "mailbox": "{{blackboard.mailbox}}",
+        "notes_workspace": "{{blackboard.notes_workspace}}",
+        "opt_out_sentence": {{{blackboard.opt_out_sentence}}},
+        "postal_address": {{{blackboard.postal_address}}},
+        "targets": {{{json SELECT.output}}}}
+      transitions:
+        - condition: on_success
+          target: SEND
+        - condition: on_failure
+          target: REJECTED
+
+    SEND:
+      kind: Agent
+      agent: email-loop-clerk
+      input: |-
+        Procedure: send each checked follow-up in its thread.
+        For each email below, exactly as written: read its target page; if
+        its state is no longer sent_1 or sent_2, or is opted_out, skip it.
+        Otherwise send it with mail.reply in its thread_id (to, subject,
+        body); it answers approval_pending with an approval_id: set the
+        target page's state to followup_pending_approval and its approval_id,
+        with a dated line on the target and thread pages.
+        Answer {"handed": [{"target_page": "...", "state": "...",
+        "approval_id": "..."}]}.
+        Emails: {{{json DRAFT.output}}}
+        Data: {"mailbox": "{{blackboard.mailbox}}",
+        "notes_workspace": "{{blackboard.notes_workspace}}",
+        "page_prefix": "{{blackboard.page_prefix}}"}
+      transitions:
+        - condition: on_success
+          target: DONE
+        - condition: on_failure
+          target: FAILED
+
+    REJECTED:
+      kind: Agent
+      agent: email-loop-clerk
+      input: |-
+        Procedure: record follow-ups that never passed their check.
+        For each target below, set its page's state to
+        draft_rejected_by_judge with a dated line; send nothing.
+        Answer {"rejected": ["<target_page>"]}.
+        Targets: {{{json SELECT.output}}}
+        Data: {"notes_workspace": "{{blackboard.notes_workspace}}",
+        "page_prefix": "{{blackboard.page_prefix}}"}
+      transitions:
+        - condition: always
+          target: DONE
+
+    DONE:
+      kind: System
+      command: "echo"
+      env:
+        RESULT: "Follow-ups written"
+      transitions: []
+
+    FAILED:
+      kind: System
+      command: "echo"
+      env:
+        MESSAGE: "Follow-ups stopped before they finished"
+      transitions: []
