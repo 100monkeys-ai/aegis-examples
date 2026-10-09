@@ -1,15 +1,19 @@
 # Copyright (c) 2026 100monkeys.ai
 # SPDX-License-Identifier: AGPL-3.0
 #
-# Sorts a person's inbox every half hour when a schedule runs it: up to 25
+# Sorts a person's inbox every half hour when a schedule runs it: up to 10
 # untriaged threads of the last 7 days, oldest first, each labelled with its
 # category, flagged when it needs the person, kept on its own page, and
 # answered by a judged reply that waits for the person's approval.
 #
+# Each clerk step is sized to one try of the clerk: labelling and recording
+# are two steps, and a run takes at most 10 threads (ADR-127 E12 (b), (c);
+# 10 is a number nobody has measured yet).
+#
 # FSM:
-#   SEED -> RECONCILE -> COLLECT -> CLASSIFY -> RECORD -> DRAFT -> SEND -> DONE
-#   CLASSIFY on failure -> FAILED
-#   DRAFT on failure    -> REJECTED -> DONE
+#   SEED -> RECONCILE -> COLLECT -> CLASSIFY -> LABEL -> RECORD -> DRAFT -> SEND -> DONE
+#   COLLECT, CLASSIFY, LABEL, RECORD or SEND on failure -> FAILED
+#   DRAFT on failure -> REJECTED -> DONE
 
 apiVersion: 100monkeys.ai/v1
 kind: Workflow
@@ -18,7 +22,7 @@ metadata:
   name: email-inbox-triage
   version: "1.0.0"
   description: |-
-    Sorts up to 25 untriaged inbox threads of the last 7 days: labels each
+    Sorts up to 10 untriaged inbox threads of the last 7 days: labels each
     zaru/triaged and zaru/<category>, flags those that need a reply, keeps a
     page per thread, and drafts a checked reply that waits for the person's
     approval before it is sent.
@@ -113,7 +117,7 @@ spec:
            flagged: read it with mail.read; if its newest message was sent
            from <mailbox>, unflag it with mail.label (flagged false).
         3. Drop every thread whose labels hold zaru/triaged. Of the rest, keep
-           the 25 with the oldest latest date.
+           the 10 with the oldest latest date.
         Answer {"threads": [{"thread_id": "...", "subject": "...",
         "participants": ["..."], "latest_date": "..."}], "unflagged": ["..."]},
         oldest first.
@@ -130,6 +134,26 @@ spec:
       input: "{{{json COLLECT.output}}}"
       transitions:
         - condition: on_success
+          target: LABEL
+        - condition: on_failure
+          target: FAILED
+
+    LABEL:
+      kind: Agent
+      agent: email-loop-clerk
+      input: |-
+        Procedure: label and flag each sorted thread; write no page.
+        For each entry of the sorting below, call mail.label once: add
+        zaru/triaged and zaru/<category>; when category is
+        reply_to_outreach, sales_lead, partner or support and needs_reply is
+        true, also flag it (flagged true). If mail.label refuses, say so in
+        "refused" with its sentence and go on.
+        Answer {"labelled": ["<thread_id>"], "refused": [{"thread_id": "...",
+        "sentence": "..."}]}.
+        Sorting: {{{json CLASSIFY.output}}}
+        Data: {"mailbox": "{{blackboard.mailbox}}"}
+      transitions:
+        - condition: on_success
           target: RECORD
         - condition: on_failure
           target: FAILED
@@ -138,23 +162,22 @@ spec:
       kind: Agent
       agent: email-loop-clerk
       input: |-
-        Procedure: label, flag and record each sorted thread.
-        For each entry of the sorting below:
-        1. mail.label: add zaru/triaged and zaru/<category>; when category is
-           reply_to_outreach, sales_lead, partner or support and needs_reply
-           is true, also flag it (flagged true). If mail.label refuses, say
-           so in "refused" with its sentence and go on.
-        2. mail.read the thread, then create its thread page, or update it
-           when one exists: metadata state (needs_reply when it needs a
-           reply, else triaged; replied when a page of an outreach target
-           points to this thread and the counterpart wrote), mailbox,
+        Procedure: record each sorted thread on its page; label nothing.
+        1. Compute the keys of all the threads below at once, as your rules
+           say: one fs.write of every thread id, one per line, then one
+           cmd.run.
+        2. For each entry of the sorting below, mail.read the thread, then
+           create its thread page, or update it when one exists: metadata
+           state (needs_reply when it needs a reply, else triaged; replied
+           when a page of an outreach target points to this thread and the
+           counterpart wrote), mailbox,
            thread_id, counterpart, category, last_inbound_at,
            last_outbound_at; one dated body line per message not yet on the
            page. When the thread belongs to a target page and the
            counterpart asks not to be written to again, set that target
            page's state to opted_out.
         Answer {"needs_reply": [{"thread_id": "...", "category": "...",
-        "summary": "..."}], "recorded": ["<page path>"], "refused": []}.
+        "summary": "..."}], "recorded": ["<page path>"]}.
         Sorting: {{{json CLASSIFY.output}}}
         Data: {"mailbox": "{{blackboard.mailbox}}",
         "notes_workspace": "{{blackboard.notes_workspace}}",

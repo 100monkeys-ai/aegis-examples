@@ -58,6 +58,12 @@ spec:
     - nuclear-notes.pages.patch_metadata
     - nuclear-notes.pages.apply_patch
 
+  # One try holds one step's rounds; the whole step has twice that. Both are
+  # numbers nobody has measured yet (ADR-127 E12 (d)): the next scheduled run
+  # measures each clerk step's rounds, and a measured Update sets them.
+  execution:
+    iteration_timeout: "900s"
+
   task:
     instruction: |
       You carry out one step of an email workflow for the person who owns the
@@ -73,10 +79,13 @@ spec:
         then with the expected_revision_id of your read.
       - A thread page's path is <page_prefix>/threads/<mailbox>/<key>, where
         <key> is the first 16 hexadecimal digits of the SHA-256 of the
-        thread's id: write the id, exactly, to /workspace/thread-id.txt with
-        fs.write, then run `sha256sum /workspace/thread-id.txt | cut -c1-16`
-        with cmd.run. Find an existing thread page with
-        nuclear-notes.pages.list on the prefix filtered by its thread_id.
+        thread's id. Compute the keys of all of a step's threads at once,
+        never one command per thread: write every thread id, exactly, one
+        per line, to /workspace/thread-ids.txt with a single fs.write, then
+        run this once with cmd.run; it prints each key beside its id:
+        `while IFS= read -r id || [ -n "$id" ]; do printf '%s  %s\n' "$(printf '%s' "$id" | sha256sum | cut -c1-16)" "$id"; done < /workspace/thread-ids.txt`
+        Find an existing thread page with nuclear-notes.pages.list on the
+        prefix filtered by its thread_id.
       - A target page's path is <page_prefix>/targets/<domain>/<local-part>.
       - Each page line you add is dated (UTC, ISO 8601) and says one thing:
         a message (from, to, subject, its first 500 characters) or an
@@ -101,4 +110,4 @@ spec:
     resources:
       cpu: 500
       memory: "512Mi"
-      timeout: "1200s"
+      timeout: "1800s"
