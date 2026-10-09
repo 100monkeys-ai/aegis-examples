@@ -136,7 +136,8 @@ spec:
         "notes_workspace": "{{blackboard.notes_workspace}}",
         "opt_out_sentence": {{{blackboard.opt_out_sentence}}},
         "postal_address": {{{blackboard.postal_address}}},
-        "targets": {{{json SELECT.output}}}}
+        "targets": {{{json SELECT.output}}}
+        }
       transitions:
         - condition: on_success
           target: SEND

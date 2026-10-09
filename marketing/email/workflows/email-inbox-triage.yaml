@@ -195,7 +195,8 @@ spec:
         {"mailbox": "{{blackboard.mailbox}}",
         "notes_workspace": "{{blackboard.notes_workspace}}",
         "evidence_paths": {{{blackboard.evidence_paths}}},
-        "threads": {{{json RECORD.output}}}}
+        "threads": {{{json RECORD.output}}}
+        }
       transitions:
         - condition: on_success
           target: SEND
