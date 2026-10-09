@@ -28,6 +28,14 @@ spec:
     isolation: inherit
     model: default
 
+  volumes:
+    - name: workspace
+      storage_class: ephemeral
+      mount_path: /workspace
+      access_mode: read-write
+      size_limit: "1Gi"
+      ttl_hours: 1
+
   contexts:
     - service: imap
       required: true
