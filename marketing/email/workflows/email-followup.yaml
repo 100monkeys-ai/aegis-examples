@@ -136,7 +136,7 @@ spec:
         "notes_workspace": "{{blackboard.notes_workspace}}",
         "opt_out_sentence": {{{blackboard.opt_out_sentence}}},
         "postal_address": {{{blackboard.postal_address}}},
-        "targets": {{{json SELECT.output}}}
+        "targets": {{{json SELECT.output.targets}}}
         }
       transitions:
         - condition: on_success
@@ -175,7 +175,7 @@ spec:
         For each target below, set its page's state to
         draft_rejected_by_judge with a dated line; send nothing.
         Answer {"rejected": ["<target_page>"]}.
-        Targets: {{{json SELECT.output}}}
+        Targets: {{{json SELECT.output.targets}}}
         Data: {"notes_workspace": "{{blackboard.notes_workspace}}",
         "page_prefix": "{{blackboard.page_prefix}}"}
       transitions:
