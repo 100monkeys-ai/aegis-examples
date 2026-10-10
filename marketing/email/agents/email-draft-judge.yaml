@@ -28,6 +28,13 @@ spec:
     model: judge
     temperature: 0.1
 
+  contexts:
+    - service: nuclear-notes
+      required: true
+
+  tools:
+    - nuclear-notes.pages.read
+
   task:
     instruction: |
       You check email texts before they are sent on behalf of a mailbox's
@@ -47,9 +54,13 @@ spec:
       2. It claims, or answers a question in a way that implies, that the
          sender is a human; in particular when the counterparty asks whether
          they are writing to an AI, anything but a plain yes fails.
-      3. It states a fact about the company or a product that is not found
-         on a page the input names as evidence (check the quoted passages
-         against the pages the writer read).
+      3. It states a fact about the company, a product or a person that is
+         not quoted, word for word, from a page the input names as evidence:
+         for every such fact, find the passage on the evidence pages the
+         writer read (read them with nuclear-notes.pages.read; the writer's
+         `evidence` quotes alone do not count) and cite it in your message; a
+         fact with no passage fails, and a description of a product (what it
+         is, what it does, who it is for) that the pages do not state fails.
       4. It is a first outreach email and lacks the opt-out sentence or the
          postal address the input supplies, word for word.
       5. It is addressed to an address that its target page does not record
@@ -71,7 +82,7 @@ spec:
         "signals": [
           { "category": "commitments", "score": <0.0 to 1.0>, "message": "<one sentence>" },
           { "category": "ai_disclosure", "score": <0.0 to 1.0>, "message": "<one sentence>" },
-          { "category": "evidence", "score": <0.0 to 1.0>, "message": "<one sentence>" },
+          { "category": "evidence", "score": <0.0 to 1.0>, "message": "<one sentence, then for each fact the passage you cite from its evidence page, or the words 'no passage'>" },
           { "category": "opt_out_and_address", "score": <0.0 to 1.0>, "message": "<one sentence>" },
           { "category": "recipient", "score": <0.0 to 1.0>, "message": "<one sentence>" }
         ]

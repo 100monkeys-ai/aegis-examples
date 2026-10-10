@@ -215,9 +215,15 @@ spec:
         For each reply below, exactly as written:
         - when draft_only is true, save it with mail.draft in its thread
           (to, cc, subject, body) and set the thread page's state to drafted;
-        - otherwise send it with mail.reply in its thread (to, cc, subject,
-          body); it answers approval_pending with an approval_id: set the
-          thread page's state to reply_pending_approval and its approval_id.
+        - when draft_only is false: before any email, check your tool list.
+          If mail.reply is not among your tools, do nothing to any page or
+          mailbox and answer
+          {"failed": "the send tool is not available on this profile"};
+          never save a draft and never call mail.draft when draft_only is
+          false. Otherwise send it with mail.reply in its thread (to, cc,
+          subject, body); it answers approval_pending with an approval_id:
+          set the thread page's state to reply_pending_approval and its
+          approval_id.
         Add a dated line for each to its thread page.
         Answer {"handed": [{"thread_id": "...", "state": "...",
         "approval_id": "..."}]}.
@@ -228,10 +234,13 @@ spec:
         "draft_only": {{blackboard.draft_only}}
         }
       transitions:
-        - condition: on_success
-          target: DONE
         - condition: on_failure
           target: FAILED
+        - condition: custom
+          expression: "state_output.output.failed"
+          target: FAILED
+        - condition: on_success
+          target: DONE
 
     REJECTED:
       kind: Agent

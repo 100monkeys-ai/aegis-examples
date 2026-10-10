@@ -140,6 +140,11 @@ spec:
       agent: email-loop-clerk
       input: |-
         Procedure: send each checked first email.
+        Before any email, check your tool list. If mail.send (for a first
+        email) or mail.reply (for a follow-up) is not among your tools, do
+        nothing to any page or mailbox and answer
+        {"failed": "the send tool is not available on this profile"}; never
+        save a draft and never call mail.draft in this procedure.
         For each email below, exactly as written: read its target page; if
         its state is no longer queued, or is opted_out, skip it. Otherwise
         send it with mail.send (to, subject, body); it answers
@@ -151,10 +156,13 @@ spec:
         Data: {"notes_workspace": "{{blackboard.notes_workspace}}",
         "page_prefix": "{{blackboard.page_prefix}}"}
       transitions:
-        - condition: on_success
-          target: DONE
         - condition: on_failure
           target: FAILED
+        - condition: custom
+          expression: "state_output.output.failed"
+          target: FAILED
+        - condition: on_success
+          target: DONE
 
     REJECTED:
       kind: Agent
