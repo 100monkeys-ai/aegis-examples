@@ -123,4 +123,4 @@ spec:
     resources:
       cpu: 500
       memory: "512Mi"
-      timeout: "120s"
+      timeout: "180s"

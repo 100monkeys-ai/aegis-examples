@@ -12,6 +12,7 @@
 #
 # FSM:
 #   SEED -> RECONCILE -> COLLECT -> CLASSIFY -> LABEL -> RECORD -> DRAFT -> SEND -> DONE
+#   RECORD with an empty needs_reply -> DONE
 #   COLLECT, CLASSIFY, LABEL, RECORD or SEND on failure -> FAILED
 #   DRAFT on failure -> REJECTED -> DONE
 
@@ -183,10 +184,13 @@ spec:
         "notes_workspace": "{{blackboard.notes_workspace}}",
         "page_prefix": "{{blackboard.page_prefix}}"}
       transitions:
-        - condition: on_success
-          target: DRAFT
         - condition: on_failure
           target: FAILED
+        - condition: custom
+          expression: "state_output.output.needs_reply"
+          target: DRAFT
+        - condition: on_success
+          target: DONE
 
     DRAFT:
       kind: Agent
