@@ -9,13 +9,13 @@
 #                     Blackboard under the state name. Access via
 #                     {{STATE.output}}, {{STATE.status}}, {{STATE.score}}, etc.
 #
-#   3. EXPLICIT UPDATE — a System state with `command: update_blackboard` and
-#                        env vars lets you write named keys into the Blackboard
+#   3. EXPLICIT UPDATE — an Action state with `action: update_blackboard` and
+#                        its args let you write named keys into the Blackboard
 #                        that subsequent states can read via {{blackboard.KEY}}.
 #
 # FSM:
 #   RESEARCH (Agent)
-#     └──on_success──► STORE (System/update_blackboard)
+#     └──on_success──► STORE (Action/update_blackboard)
 #                         └──always──► SUMMARISE (Agent)
 #                                         └──score_above 0.8──► DONE
 #                                         └──score_below 0.8──► FAILED
@@ -100,16 +100,16 @@ spec:
           target: FAILED
 
     # ── State 2: STORE ───────────────────────────────────────────────────────
-    # System state using `update_blackboard` to write named keys.
-    # Each env var becomes a Blackboard key accessible as {{blackboard.KEY}}
+    # Action state running `update_blackboard` to write named keys.
+    # Each arg becomes a Blackboard key accessible as {{blackboard.KEY}}
     # in all subsequent states.
     #
     # This is useful when you want to give a value a stable, semantic name
     # rather than referring to it by state name + field path.
     STORE:
-      kind: System
-      command: update_blackboard
-      env:
+      kind: Action
+      action: update_blackboard
+      args:
         # Write the research output under a meaningful key name.
         research_summary: "{{RESEARCH.output}}"
         # Capture the validated topic (from the start input).

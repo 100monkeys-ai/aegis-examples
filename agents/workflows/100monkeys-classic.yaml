@@ -187,13 +187,13 @@ spec:
     # Update blackboard with feedback and check iteration limit
     # ========================================================================
     REFINE:
-      kind: System
+      kind: Action
       max_state_visits: 10
 
-      command: "update_blackboard"
+      action: update_blackboard
       
       # Update blackboard state for next iteration
-      env:
+      args:
         ITERATION_NUMBER: "{{blackboard.iteration_number + 1}}"
         PREVIOUS_CODE: "{{GENERATE.output}}"
         VALIDATION_ERRORS: "{{state.feedback}}"

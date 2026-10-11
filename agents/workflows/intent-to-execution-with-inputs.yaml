@@ -7,7 +7,7 @@
 # variable, depending on the language runtime.
 #
 # FSM:
-#   SEED_INPUTS     (System/update_blackboard)  — bind inputs to named keys
+#   SEED_INPUTS     (Action/update_blackboard)  — bind inputs to named keys
 #     └──always──► EXECUTE_INTENT  (Agent)
 #   EXECUTE_INTENT
 #     └──on_success──► DONE
@@ -68,14 +68,14 @@ spec:
 
   states:
 
-    # ── 1. SEED_INPUTS (System) ───────────────────────────────────────────────
+    # ── 1. SEED_INPUTS (Action) ───────────────────────────────────────────────
     # Write the runtime inputs into the Blackboard under stable, semantic names
     # so the agent input template below can reference them as {{blackboard.KEY}}.
     # The `default` helper resolves CLI --input values first, then context defaults.
     SEED_INPUTS:
-      kind: System
-      command: update_blackboard
-      env:
+      kind: Action
+      action: update_blackboard
+      args:
         a: "{{default input.a workflow.context.a}}"
         b: "{{default input.b workflow.context.b}}"
       transitions:

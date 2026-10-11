@@ -129,7 +129,7 @@ Multi-agent pipelines are defined in [`agents/workflows/`](agents/workflows/). E
 | --- | --- | --- |
 | [`100monkeys-classic.yaml`](agents/workflows/100monkeys-classic.yaml) | Iterative refinement | Generate → execute → judge-validate → refine loop using the Blackboard for iteration state. |
 | [`the-forge.yaml`](agents/workflows/the-forge.yaml) | Constitutional pipeline | Full RequirementsAI → ArchitectAI → TesterAI → CoderAI → parallel audit → human gate → deploy lifecycle. |
-| [`stateful-pipeline.yaml`](agents/workflows/stateful-pipeline.yaml) | Blackboard accumulation | Three-state example showing all three Blackboard population methods: `spec.context` seeding, automatic state-output writes, and explicit `update_blackboard` System states. **Start here if you're learning the Blackboard.** |
+| [`stateful-pipeline.yaml`](agents/workflows/stateful-pipeline.yaml) | Blackboard accumulation | Three-state example showing all three Blackboard population methods: `spec.context` seeding, automatic state-output writes, and explicit `update_blackboard` Action states (`kind: Action`, `action: update_blackboard`, `args`). **Start here if you're learning the Blackboard.** |
 | [`echo-workflow.yaml`](agents/workflows/echo-workflow.yaml) | Minimal | Two-state echo workflow demonstrating `{{workflow.context.KEY}}` access. |
 | [`agent-workflow.yaml`](agents/workflows/agent-workflow.yaml) | Minimal | Two-state workflow with a System state reading an Agent output. |
 | [`human-approval.yaml`](agents/workflows/human-approval.yaml) | Human-in-the-loop | Three-state workflow with a Human gate and `signal` resumption. |

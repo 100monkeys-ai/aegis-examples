@@ -68,9 +68,9 @@ spec:
 
   states:
     SEED:
-      kind: System
-      command: update_blackboard
-      env:
+      kind: Action
+      action: update_blackboard
+      args:
         mailbox: "{{input.mailbox}}"
         notes_workspace: "{{input.notes_workspace}}"
         page_prefix: "{{default input.page_prefix workflow.context.page_prefix}}"

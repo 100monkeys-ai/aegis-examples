@@ -18,7 +18,7 @@
 #   account with no persistent volume entitlement.
 #
 # FSM:
-#   SEED_INPUTS     (System/update_blackboard)
+#   SEED_INPUTS     (Action/update_blackboard)
 #     └──always──► EXECUTE_INTENT  (Agent)
 #   EXECUTE_INTENT
 #     └──on_success──► DONE
@@ -71,13 +71,13 @@ spec:
 
   states:
 
-    # ── 1. SEED_INPUTS (System) ───────────────────────────────────────────────
+    # ── 1. SEED_INPUTS (Action) ───────────────────────────────────────────────
     # Bind the volume_id from the CLI --input into the Blackboard.
     # There is no safe default here — the user MUST supply a real volume UUID.
     SEED_INPUTS:
-      kind: System
-      command: update_blackboard
-      env:
+      kind: Action
+      action: update_blackboard
+      args:
         # Replace with your persistent volume ID from `aegis volume list`.
         volume_id: "{{input.volume_id}}"
       transitions:
