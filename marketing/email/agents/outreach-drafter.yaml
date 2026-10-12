@@ -137,7 +137,7 @@ spec:
           must be addressed only to the address its target page records, with
           the URL where it is published.
         min_score: 0.8
-        timeout_seconds: 180
+        timeout_seconds: 480
 
   security:
     network:
@@ -145,4 +145,4 @@ spec:
     resources:
       cpu: 500
       memory: "512Mi"
-      timeout: "900s"
+      timeout: "1800s"
