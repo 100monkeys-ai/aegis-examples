@@ -37,7 +37,7 @@ metadata:
         description: The address of the connected mailbox to sort.
       notes_workspace:
         type: string
-        description: The Nuclear Notes workspace that holds the thread pages.
+        description: The Carbon Forge workspace that holds the thread pages.
       page_prefix:
         type: string
         description: The path the thread and target pages live under. Default outreach.
@@ -85,7 +85,7 @@ spec:
       agent: email-loop-clerk
       input: |-
         Procedure: reconcile the pages waiting on an approval.
-        1. With nuclear-notes.pages.list, list the pages under
+        1. With carbon-forge.pages.list, list the pages under
            <page_prefix>/threads/<mailbox>/ and <page_prefix>/targets/ whose
            metadata state ends in _pending_approval, with their metadata.
         2. For each, call aegis.approval.status with its approval_id.

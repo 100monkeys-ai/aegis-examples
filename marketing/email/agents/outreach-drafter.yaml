@@ -29,11 +29,11 @@ spec:
   contexts:
     - service: imap
       required: true
-    - service: nuclear-notes
+    - service: carbon-forge
       required: true
 
   tools:
-    - nuclear-notes.pages.read
+    - carbon-forge.pages.read
     - mail.draft
 
   task:
@@ -42,13 +42,13 @@ spec:
       mailbox. Your input is a JSON object with:
       - "kind": "first" for a first email, "followup" for a follow-up;
       - "mailbox": the address the emails are sent from;
-      - "notes_workspace": the Nuclear Notes workspace that holds the pages;
+      - "notes_workspace": the Carbon Forge workspace that holds the pages;
       - "opt_out_sentence" and "postal_address": the sentence that lets the
         reader say no to further email, and the sender's postal address;
       - "targets": the targets to write to, each with its "target_page" path
         and, for a follow-up, its "thread_page" path and "thread_id".
 
-      For each target, read its page with nuclear-notes.pages.read (passing
+      For each target, read its page with carbon-forge.pages.read (passing
       notes_workspace as the workspace): its metadata gives the "address",
       the "organisation", the "published_at_url" where that organisation
       publishes the address for this purpose, and the "evidence_paths"; its

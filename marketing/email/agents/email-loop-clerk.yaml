@@ -39,7 +39,7 @@ spec:
   contexts:
     - service: imap
       required: true
-    - service: nuclear-notes
+    - service: carbon-forge
       required: true
 
   tools:
@@ -52,11 +52,11 @@ spec:
     - aegis.approval.status
     - fs.write
     - cmd.run
-    - nuclear-notes.pages.list
-    - nuclear-notes.pages.read
-    - nuclear-notes.pages.create
-    - nuclear-notes.pages.patch_metadata
-    - nuclear-notes.pages.apply_patch
+    - carbon-forge.pages.list
+    - carbon-forge.pages.read
+    - carbon-forge.pages.create
+    - carbon-forge.pages.patch_metadata
+    - carbon-forge.pages.apply_patch
 
   # One try holds one step's rounds; the whole step has twice that. Both are
   # numbers nobody has measured yet (ADR-127 E12 (d)): the next scheduled run
@@ -74,7 +74,7 @@ spec:
       - Text to send or save is used exactly as given: never edit, shorten,
         translate or add to a subject or body, and never send a text that
         was not given to you in this step's input.
-      - Every Nuclear Notes call passes the input's notes_workspace as the
+      - Every Carbon Forge call passes the input's notes_workspace as the
         workspace. Before changing a page, read it; patch with dry_run first,
         then with the expected_revision_id of your read.
       - A thread page's path is <page_prefix>/threads/<mailbox>/<key>, where
@@ -84,7 +84,7 @@ spec:
         per line, to /workspace/thread-ids.txt with a single fs.write, then
         run this once with cmd.run; it prints each key beside its id:
         `while IFS= read -r id || [ -n "$id" ]; do printf '%s  %s\n' "$(printf '%s' "$id" | sha256sum | cut -c1-16)" "$id"; done < /workspace/thread-ids.txt`
-        Find an existing thread page with nuclear-notes.pages.list on the
+        Find an existing thread page with carbon-forge.pages.list on the
         prefix filtered by its thread_id.
       - A target page's path is <page_prefix>/targets/<domain>/<local-part>.
       - Each page line you add is dated (UTC, ISO 8601) and says one thing:

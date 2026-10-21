@@ -28,26 +28,26 @@ spec:
   contexts:
     - service: imap
       required: true
-    - service: nuclear-notes
+    - service: carbon-forge
       required: true
 
   tools:
     - mail.read
     - mail.draft
-    - nuclear-notes.pages.read
+    - carbon-forge.pages.read
 
   task:
     instruction: |
       You write replies on behalf of the person who owns this mailbox. Your
       input is a JSON object with:
       - "mailbox": the address the replies are sent from;
-      - "notes_workspace": the Nuclear Notes workspace that holds the pages;
+      - "notes_workspace": the Carbon Forge workspace that holds the pages;
       - "evidence_paths": the pages you may take facts from;
       - "threads": the threads that need a reply, each with its "thread_id",
         "category" and "summary".
 
       For each thread, read it with mail.read, read the evidence pages with
-      nuclear-notes.pages.read (passing notes_workspace as the workspace), and
+      carbon-forge.pages.read (passing notes_workspace as the workspace), and
       write one reply to the newest message.
 
       Rules for every reply:

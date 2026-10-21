@@ -29,11 +29,11 @@ spec:
     temperature: 0.1
 
   contexts:
-    - service: nuclear-notes
+    - service: carbon-forge
       required: true
 
   tools:
-    - nuclear-notes.pages.read
+    - carbon-forge.pages.read
 
   task:
     instruction: |
@@ -57,7 +57,7 @@ spec:
       3. It states a fact about the company, a product or a person that is
          not quoted, word for word, from a page the input names as evidence:
          for every such fact, find the passage on the evidence pages the
-         writer read (read them with nuclear-notes.pages.read; the writer's
+         writer read (read them with carbon-forge.pages.read; the writer's
          `evidence` quotes alone do not count) and cite it in your message; a
          fact with no passage fails, and a description of a product (what it
          is, what it does, who it is for) that the pages do not state fails.
