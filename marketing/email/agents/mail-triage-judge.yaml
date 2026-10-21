@@ -115,4 +115,5 @@ spec:
     resources:
       cpu: 500
       memory: "512Mi"
+      # One try (max_iterations 1): the 120 s mail-triage-agent waits for it.
       timeout: "120s"

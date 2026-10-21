@@ -108,4 +108,5 @@ spec:
     resources:
       cpu: 500
       memory: "512Mi"
-      timeout: "600s"
+      # Two whole tries: 2 x (600 s try + 120 s judge) + 15 s wait + 30 s start.
+      timeout: "1485s"

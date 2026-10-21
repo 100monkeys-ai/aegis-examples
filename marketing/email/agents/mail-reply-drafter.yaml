@@ -127,7 +127,7 @@ spec:
           evidence list. These are replies in existing threads, not first
           outreach, and each is addressed to the people already in its thread.
         min_score: 0.8
-        timeout_seconds: 180
+        timeout_seconds: 480
 
   security:
     network:
@@ -135,4 +135,5 @@ spec:
     resources:
       cpu: 500
       memory: "512Mi"
-      timeout: "900s"
+      # Two whole tries: 2 x (600 s try + 480 s judge) + 15 s wait + 30 s start.
+      timeout: "2205s"

@@ -58,9 +58,10 @@ spec:
     - carbon-forge.pages.patch_metadata
     - carbon-forge.pages.apply_patch
 
-  # One try holds one step's rounds; the whole step has twice that. Both are
-  # numbers nobody has measured yet (ADR-127 E12 (d)): the next scheduled run
-  # measures each clerk step's rounds, and a measured Update sets them.
+  # One try holds one step's rounds; the whole step holds two tries, the wait
+  # between them and the start. The try is a number nobody has measured yet:
+  # the next scheduled run measures each clerk step's rounds, and the try and
+  # the step's bound are set from them.
   execution:
     iteration_timeout: "900s"
 
@@ -110,4 +111,5 @@ spec:
     resources:
       cpu: 500
       memory: "512Mi"
-      timeout: "1800s"
+      # Two whole tries: 2 x (900 s try + no judge) + 15 s wait + 30 s start.
+      timeout: "1845s"
